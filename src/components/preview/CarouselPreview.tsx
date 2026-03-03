@@ -42,6 +42,8 @@ export default function CarouselPreview() {
   const [editHeadline, setEditHeadline] = useState('')
   const [editSubtitle, setEditSubtitle] = useState('')
   const [generatingImg, setGeneratingImg] = useState<Set<number>>(new Set())
+  const [promptEditIdx, setPromptEditIdx] = useState<number | null>(null)
+  const [editPrompt, setEditPrompt] = useState('')
   const [genAllProgress, setGenAllProgress] = useState<{ current: number; total: number } | null>(null)
   const [downloadingSlide, setDownloadingSlide] = useState<number | null>(null)
   const [dlAllLoading, setDlAllLoading] = useState(false)
@@ -142,14 +144,27 @@ export default function CarouselPreview() {
     toast.success('Imagens geradas!', { id: toastId })
   }
 
-  const genImage = async (idx: number) => {
+  const openPromptEdit = (idx: number) => {
+    setEditPrompt(slides[idx].visualPrompt)
+    setPromptEditIdx(idx)
+  }
+
+  const genImage = async (idx: number, prompt?: string) => {
     if (!apiKey) { toast.error('Configure sua chave Gemini nas Configurações'); return }
+    const finalPrompt = prompt ?? slides[idx].visualPrompt
+    // Save edited prompt to slide
+    if (prompt && prompt !== slides[idx].visualPrompt) {
+      const next = [...slides]
+      next[idx] = { ...next[idx], visualPrompt: prompt }
+      setSlides(next)
+    }
+    setPromptEditIdx(null)
     setGeneratingImg(prev => new Set([...prev, idx]))
     const toastId = toast.loading(`Gerando imagem do slide ${idx + 1}...`)
     try {
-      const url = await generateSlideImage(slides[idx].visualPrompt, currentCarousel.format || '4:5', currentProject?.inputs_json?.expertPhotoBase64)
+      const url = await generateSlideImage(finalPrompt, currentCarousel.format || '4:5', currentProject?.inputs_json?.expertPhotoBase64)
       const next = [...slides]
-      next[idx] = { ...next[idx], imageUrl: url, imageError: undefined }
+      next[idx] = { ...next[idx], imageUrl: url, imageError: undefined, visualPrompt: finalPrompt }
       saveSlides(next)
       toast.success('Imagem gerada!', { id: toastId })
     } catch (err: unknown) {
@@ -363,7 +378,7 @@ export default function CarouselPreview() {
                       <Image size={12} className="inline mr-1" />Foto
                       <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(i, e)} />
                     </label>
-                    <button onClick={() => genImage(i)} disabled={generatingImg.has(i)} title="Gerar com IA" className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 transition-all disabled:opacity-40">
+                    <button onClick={() => openPromptEdit(i)} disabled={generatingImg.has(i)} title="Gerar com IA" className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 transition-all disabled:opacity-40">
                       <Wand2 size={12} className="inline mr-1" />IA
                     </button>
                   </div>
@@ -400,6 +415,25 @@ export default function CarouselPreview() {
                       <div className="flex gap-2">
                         <button onClick={saveEdit} className="flex-1 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-bold">✓ Salvar</button>
                         <button onClick={() => setEditingIdx(null)} className="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-500 rounded-lg text-xs">✕</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Prompt edit panel */}
+                  {promptEditIdx === i && (
+                    <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-violet-300 dark:border-violet-700 space-y-2" style={{ width: DISP_W }}>
+                      <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">Prompt da imagem</p>
+                      <textarea
+                        value={editPrompt}
+                        onChange={e => setEditPrompt(e.target.value)}
+                        rows={4}
+                        className="w-full px-2.5 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white resize-none focus:outline-none focus:border-violet-400 leading-relaxed"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => genImage(i, editPrompt)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50">
+                          <Wand2 size={11} /> Gerar
+                        </button>
+                        <button onClick={() => setPromptEditIdx(null)} className="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-500 rounded-lg text-xs">✕</button>
                       </div>
                     </div>
                   )}
