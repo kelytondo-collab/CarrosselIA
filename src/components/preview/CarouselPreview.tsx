@@ -42,6 +42,7 @@ export default function CarouselPreview() {
   const [editHeadline, setEditHeadline] = useState('')
   const [editSubtitle, setEditSubtitle] = useState('')
   const [generatingImg, setGeneratingImg] = useState<Set<number>>(new Set())
+  const [genAllProgress, setGenAllProgress] = useState<{ current: number; total: number } | null>(null)
   const [downloadingSlide, setDownloadingSlide] = useState<number | null>(null)
   const [dlAllLoading, setDlAllLoading] = useState(false)
   const [copied, setCopied] = useState('')
@@ -102,6 +103,37 @@ export default function CarouselPreview() {
     const next = [...slides]
     next[idx] = { ...next[idx], imageUrl: undefined }
     saveSlides(next)
+  }
+
+  const genAllImages = async () => {
+    if (!apiKey) { toast.error('Configure sua chave Gemini nas Configurações'); return }
+    const total = slides.length
+    setGenAllProgress({ current: 0, total })
+    const toastId = toast.loading(`Gerando imagens 0/${total}...`)
+    let updatedSlides = [...slides]
+    for (let i = 0; i < total; i++) {
+      setGenAllProgress({ current: i + 1, total })
+      toast.loading(`Gerando slide ${i + 1}/${total}...`, { id: toastId })
+      try {
+        const url = await generateSlideImage(
+          slides[i].visualPrompt,
+          currentCarousel.format || '4:5',
+          currentProject?.inputs_json?.expertPhotoBase64
+        )
+        updatedSlides = updatedSlides.map((s, idx) =>
+          idx === i ? { ...s, imageUrl: url, imageError: undefined } : s
+        )
+        setSlides([...updatedSlides])
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Erro'
+        updatedSlides = updatedSlides.map((s, idx) =>
+          idx === i ? { ...s, imageError: msg } : s
+        )
+      }
+    }
+    saveSlides(updatedSlides)
+    setGenAllProgress(null)
+    toast.success('Imagens geradas!', { id: toastId })
   }
 
   const genImage = async (idx: number) => {
@@ -257,6 +289,27 @@ export default function CarouselPreview() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Gen All */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Wand2 size={11} /> IA</p>
+                <button
+                  onClick={genAllImages}
+                  disabled={genAllProgress !== null}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                >
+                  <Wand2 size={12} />
+                  {genAllProgress ? `${genAllProgress.current}/${genAllProgress.total}` : 'Gerar todas'}
+                </button>
+                {genAllProgress && (
+                  <div className="mt-1.5 h-1.5 w-24 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-violet-500 rounded-full transition-all duration-500"
+                      style={{ width: `${(genAllProgress.current / genAllProgress.total) * 100}%` }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Brand */}
