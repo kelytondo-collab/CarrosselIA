@@ -1,0 +1,111 @@
+export type Platform = 'instagram' | 'linkedin' | 'pinterest' | 'threads'
+export type Tone = 'profissional' | 'descontraído' | 'inspirador' | 'urgente' | 'educativo' | 'provocador' | 'afetuoso'
+export type Format = '1:1' | '9:16' | '4:5'
+export type SlideCount = 5 | 7 | 8 | 10
+
+export interface ColorPalette {
+  primary: string
+  secondary: string
+  accent: string
+}
+
+export interface SpecialistProfile {
+  id: string
+  name: string
+  photo_base64?: string
+  niche?: string
+  tone?: Tone
+  bio?: string
+  color_palette: ColorPalette
+  default_platform: Platform
+  default_slide_count: SlideCount
+  is_default: boolean
+  created_at: string
+}
+
+export interface ProjectInputs {
+  projectName: string
+  theme: string
+  product: string
+  objective: string
+  investment: string
+  baseText: string
+  contextInfo: string
+  tone: Tone
+  niche: string
+  platform: Platform
+  slideCount: SlideCount
+  profileId?: string
+}
+
+export interface SlideStyle {
+  titleSize?: number
+  subtitleSize?: number
+  textPosition?: 'top' | 'middle' | 'bottom'
+  textAlign?: 'left' | 'center' | 'right'
+  overlayOpacity?: number
+  backgroundColor?: string
+}
+
+export interface SlideData {
+  id: number
+  headline: string
+  subtitle: string
+  visualPrompt: string
+  emotion: string
+  ctaType?: string
+  imageUrl?: string
+  isGeneratingImage: boolean
+  imageError?: string
+  style?: SlideStyle
+}
+
+export interface Strategy {
+  persona: string
+  painPoint: string
+  desire: string
+  narrativePath: string
+  consciousnessLevel: string
+  niche: string
+  hook?: string
+}
+
+export interface Caption {
+  hook: string
+  body: string
+  cta: string
+  hashtags: string
+  altText?: string
+}
+
+export interface ManyChatFlow {
+  keyword: string
+  flow1: string
+  flow2: string | { step: string; message: string }[]
+  flow3: string | { step: string; message: string }[]
+}
+
+export interface CarouselData {
+  strategy: Strategy
+  slides: SlideData[]
+  caption: Caption
+  manychat: ManyChatFlow
+  seoKeywords?: string[]
+  format?: Format
+  generatedAt?: string
+}
+
+export interface Project {
+  id: string
+  name: string
+  theme?: string
+  product?: string
+  platform?: Platform
+  inputs_json?: ProjectInputs
+  current_carousel_data?: CarouselData
+  status: 'active' | 'archived'
+  is_favorite: boolean
+  tags?: string[]
+  created_at: string
+  updated_at: string
+}
