@@ -73,6 +73,12 @@ export default function CarouselPreview() {
     }
   }
 
+  const setTextPosition = (idx: number, pos: 'top' | 'middle' | 'bottom') => {
+    const next = [...slides]
+    next[idx] = { ...next[idx], style: { ...next[idx].style, textPosition: pos } }
+    saveSlides(next)
+  }
+
   const startEdit = (i: number) => {
     setEditingIdx(i)
     setEditHeadline(slides[i].headline)
@@ -367,6 +373,23 @@ export default function CarouselPreview() {
                     <button onClick={() => dlSlide(i)} disabled={downloadingSlide === i} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-violet-50 hover:text-violet-700 transition-all disabled:opacity-40">
                       {downloadingSlide === i ? '⏳' : <Download size={13} />}
                     </button>
+                  </div>
+
+                  <div className="flex gap-1" style={{ width: DISP_W }}>
+                    {(['top', 'middle', 'bottom'] as const).map(pos => (
+                      <button
+                        key={pos}
+                        onClick={() => setTextPosition(i, pos)}
+                        className={cn(
+                          'flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                          (slide.style?.textPosition || 'middle') === pos
+                            ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300'
+                            : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300'
+                        )}
+                      >
+                        {pos === 'top' ? '↑ Topo' : pos === 'middle' ? '● Centro' : '↓ Base'}
+                      </button>
+                    ))}
                   </div>
 
                   {/* Edit panel */}

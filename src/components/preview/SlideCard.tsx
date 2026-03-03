@@ -62,7 +62,15 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBlock: PAD * 0.6 }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: slide.style?.textPosition === 'top' ? 'flex-start'
+          : slide.style?.textPosition === 'bottom' ? 'flex-end'
+          : 'center',
+        paddingBlock: PAD * 0.6,
+      }}>
         {isFirst && (
           <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 12, opacity: 0.9, fontFamily: subtitleFont }}>
             ✦ CARROSSEL
