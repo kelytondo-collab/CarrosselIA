@@ -36,6 +36,7 @@ export interface ProjectInputs {
   platform: Platform
   slideCount: SlideCount
   profileId?: string
+  expertPhotoBase64?: string // Foto do expert para image-to-image
 }
 
 export interface SlideStyle {
