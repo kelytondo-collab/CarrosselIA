@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Wand2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Wand2, ChevronDown, ChevronUp, Camera, X } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { ProjectInputs, Tone, Platform, SlideCount } from '../../types'
 import { createProject, updateProjectCarousel, getDefaultProfile } from '../../services/storageService'
@@ -32,6 +32,7 @@ const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 u
 export default function InputSection() {
   const { setView, setCurrentProject, setCurrentCarousel, refreshProjects, setIsGenerating, setGenerationPhase, setGenerationProgress, apiKey } = useApp()
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const defaultProfile = getDefaultProfile()
 
@@ -47,10 +48,19 @@ export default function InputSection() {
     niche: defaultProfile?.niche || '',
     platform: defaultProfile?.default_platform || 'instagram',
     slideCount: defaultProfile?.default_slide_count || 8,
+    expertPhotoBase64: undefined,
   })
 
-  const set = (field: keyof ProjectInputs, value: string | number) =>
+  const set = (field: keyof ProjectInputs, value: string | number | undefined) =>
     setForm(prev => ({ ...prev, [field]: value }))
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => set('expertPhotoBase64', ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   const handleGenerate = async () => {
     if (!apiKey) {
@@ -202,6 +212,48 @@ export default function InputSection() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Expert Photo */}
+        <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+          <h2 className="font-semibold text-gray-800 dark:text-white text-sm mb-1">Foto do Expert <span className="font-normal text-gray-400">(opcional)</span></h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quando fornecida, a IA gera imagens de slides mantendo seu rosto e mudando o cenário.</p>
+
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+
+          {form.expertPhotoBase64 ? (
+            <div className="flex items-center gap-3">
+              <img
+                src={form.expertPhotoBase64}
+                alt="Expert"
+                className="w-16 h-16 rounded-xl object-cover border-2 border-violet-400"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Foto carregada</p>
+                <p className="text-xs text-gray-400">A IA usará esta imagem como referência facial</p>
+              </div>
+              <button
+                onClick={() => set('expertPhotoBase64', undefined)}
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-red-500 hover:border-red-300 transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:border-violet-400 hover:text-violet-600 transition-all"
+            >
+              <Camera size={18} />
+              Enviar foto do expert
+            </button>
+          )}
         </div>
 
         {/* Advanced toggle */}

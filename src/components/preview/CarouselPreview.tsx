@@ -109,7 +109,7 @@ export default function CarouselPreview() {
     setGeneratingImg(prev => new Set([...prev, idx]))
     const toastId = toast.loading(`Gerando imagem do slide ${idx + 1}...`)
     try {
-      const url = await generateSlideImage(slides[idx].visualPrompt, currentCarousel.format || '4:5')
+      const url = await generateSlideImage(slides[idx].visualPrompt, currentCarousel.format || '4:5', currentProject?.inputs_json?.expertPhotoBase64)
       const next = [...slides]
       next[idx] = { ...next[idx], imageUrl: url, imageError: undefined }
       saveSlides(next)
