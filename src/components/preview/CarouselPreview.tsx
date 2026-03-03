@@ -44,6 +44,7 @@ export default function CarouselPreview() {
   const [generatingImg, setGeneratingImg] = useState<Set<number>>(new Set())
   const [promptEditIdx, setPromptEditIdx] = useState<number | null>(null)
   const [editPrompt, setEditPrompt] = useState('')
+  const editPromptRef = useRef('')
   const [genAllProgress, setGenAllProgress] = useState<{ current: number; total: number } | null>(null)
   const [downloadingSlide, setDownloadingSlide] = useState<number | null>(null)
   const [dlAllLoading, setDlAllLoading] = useState(false)
@@ -145,7 +146,9 @@ export default function CarouselPreview() {
   }
 
   const openPromptEdit = (idx: number) => {
-    setEditPrompt(slides[idx].visualPrompt)
+    const p = slides[idx].visualPrompt
+    setEditPrompt(p)
+    editPromptRef.current = p
     setPromptEditIdx(idx)
   }
 
@@ -425,12 +428,12 @@ export default function CarouselPreview() {
                       <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">Prompt da imagem</p>
                       <textarea
                         value={editPrompt}
-                        onChange={e => setEditPrompt(e.target.value)}
+                        onChange={e => { setEditPrompt(e.target.value); editPromptRef.current = e.target.value }}
                         rows={4}
                         className="w-full px-2.5 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white resize-none focus:outline-none focus:border-violet-400 leading-relaxed"
                       />
                       <div className="flex gap-2">
-                        <button onClick={() => genImage(i, editPrompt)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50">
+                        <button onClick={() => genImage(i, editPromptRef.current)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 disabled:opacity-50">
                           <Wand2 size={11} /> Gerar
                         </button>
                         <button onClick={() => setPromptEditIdx(null)} className="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-500 rounded-lg text-xs">✕</button>

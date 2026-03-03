@@ -58,13 +58,15 @@ export const getProject = (id: string): Project | undefined =>
   getProjects().find(p => p.id === id)
 
 export const createProject = (inputs: ProjectInputs): Project => {
+  // Strip expertPhotoBase64 (large base64) before saving to localStorage
+  const { expertPhotoBase64: _photo, ...inputsToSave } = inputs
   const project: Project = {
     id: crypto.randomUUID(),
     name: inputs.projectName || `Projeto ${Date.now()}`,
     theme: inputs.theme,
     product: inputs.product,
     platform: inputs.platform,
-    inputs_json: inputs,
+    inputs_json: inputsToSave,
     status: 'active',
     is_favorite: false,
     created_at: new Date().toISOString(),
@@ -80,7 +82,12 @@ export const updateProjectCarousel = (id: string, data: CarouselData): void => {
   const projects = getProjects()
   const idx = projects.findIndex(p => p.id === id)
   if (idx >= 0) {
-    projects[idx].current_carousel_data = data
+    // Strip imageUrl (base64) from slides before saving — images are too large for localStorage
+    const dataToSave: CarouselData = {
+      ...data,
+      slides: data.slides.map(s => ({ ...s, imageUrl: undefined, isGeneratingImage: false })),
+    }
+    projects[idx].current_carousel_data = dataToSave
     projects[idx].updated_at = new Date().toISOString()
     save(KEYS.projects, projects)
   }
