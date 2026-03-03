@@ -155,7 +155,7 @@ export const generateSlideImage = async (
 ): Promise<string> => {
   if (!genAI) throw new Error('Configure sua chave Gemini')
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-preview-image-generation' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' })
 
   const formatDesc = format === '9:16' ? 'vertical retrato (9:16)'
     : format === '4:5' ? 'vertical (4:5)'
