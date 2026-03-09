@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Plus, Trash2, Check, User } from 'lucide-react'
+import { Plus, Trash2, Check, User, Loader2 } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { SpecialistProfile, Tone, Platform, SlideCount, ColorPalette } from '../../types'
 import { saveProfile, deleteProfile } from '../../services/storageService'
+import { generateVoiceBlueprint } from '../../services/geminiService'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -11,6 +12,17 @@ const PLATFORMS: Platform[] = ['instagram', 'linkedin', 'threads', 'pinterest']
 const SLIDE_COUNTS: SlideCount[] = [5, 7, 8, 10]
 
 const DEFAULT_PALETTE: ColorPalette = { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc' }
+
+const VOICE_QUESTIONS: { key: string; label: string; placeholder: string }[] = [
+  { key: 'comunicacao', label: 'Como você se comunica com seus seguidores?', placeholder: 'Ex: De forma direta e acolhedora, como uma conversa entre amigas...' },
+  { key: 'crencas', label: 'Suas 3 crenças centrais sobre sua área', placeholder: 'Ex: 1. Terapia não é luxo, é necessidade. 2. Todo mundo merece...' },
+  { key: 'palavrasUsa', label: 'Palavras/expressões que você sempre usa', placeholder: 'Ex: "regulação emocional", "presença", "você não está sozinha"...' },
+  { key: 'palavrasNunca', label: 'Palavras/abordagens que você NUNCA usaria', placeholder: 'Ex: Nunca uso "cura milagrosa", nunca prometo resultado em X dias...' },
+  { key: 'transformacao', label: 'Transformação real que você entrega', placeholder: 'Ex: A pessoa sai sabendo nomear suas emoções e criar pausas antes de reagir...' },
+  { key: 'diferencial', label: 'O que te diferencia no nicho', placeholder: 'Ex: Combino neurociência com escuta profunda. Não dou fórmulas — trabalho o específico...' },
+  { key: 'emocao', label: 'Como você quer que a pessoa se sinta ao consumir seu conteúdo', placeholder: 'Ex: Compreendida, menos sozinha, com clareza de que pode agir agora...' },
+  { key: 'referencia', label: 'Descreva um conteúdo seu perfeito e por quê funcionou', placeholder: 'Ex: O post "Ansiedade não é fraqueza" porque tocou em vergonha sem julgamento...' },
+]
 
 const emptyProfile = (): Omit<SpecialistProfile, 'id' | 'created_at'> => ({
   name: '',
@@ -21,11 +33,15 @@ const emptyProfile = (): Omit<SpecialistProfile, 'id' | 'created_at'> => ({
   default_platform: 'instagram',
   default_slide_count: 8,
   is_default: false,
+  voiceBlueprint: '',
 })
 
 export default function ProfileManager() {
-  const { profiles, refreshProfiles } = useApp()
+  const { profiles, refreshProfiles, apiKey } = useApp()
   const [editing, setEditing] = useState<(Omit<SpecialistProfile, 'id' | 'created_at'> & { id?: string }) | null>(null)
+  const [blueprintTab, setBlueprintTab] = useState<'guided' | 'direct'>('guided')
+  const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({})
+  const [isGeneratingBlueprint, setIsGeneratingBlueprint] = useState(false)
 
   const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5'
   const inputCls = 'w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-violet-400'
@@ -40,6 +56,7 @@ export default function ProfileManager() {
     saveProfile(profile)
     refreshProfiles()
     setEditing(null)
+    setGuidedAnswers({})
     toast.success('Perfil salvo!')
   }
 
@@ -47,6 +64,32 @@ export default function ProfileManager() {
     if (confirm('Excluir este perfil?')) {
       deleteProfile(id)
       refreshProfiles()
+    }
+  }
+
+  const handleEditOpen = (p: SpecialistProfile) => {
+    setEditing({ ...p })
+    setGuidedAnswers({})
+    setBlueprintTab('guided')
+  }
+
+  const handleGenerateBlueprint = async () => {
+    if (!apiKey) { toast.error('Configure sua chave Gemini API nas Configurações'); return }
+    if (!editing) return
+    const filledCount = Object.values(guidedAnswers).filter(v => v.trim()).length
+    if (filledCount < 3) { toast.error('Responda pelo menos 3 perguntas para gerar o blueprint'); return }
+
+    setIsGeneratingBlueprint(true)
+    const toastId = toast.loading('Gerando Blueprint da Voz...')
+    try {
+      const blueprint = await generateVoiceBlueprint(guidedAnswers, editing.name, editing.niche || '')
+      setEditing({ ...editing, voiceBlueprint: blueprint })
+      toast.success('Blueprint gerado! Revise e salve o perfil.', { id: toastId })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao gerar blueprint'
+      toast.error(msg, { id: toastId })
+    } finally {
+      setIsGeneratingBlueprint(false)
     }
   }
 
@@ -58,7 +101,7 @@ export default function ProfileManager() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Configure perfis com tom de voz, nicho e paleta de cores</p>
         </div>
         <button
-          onClick={() => setEditing(emptyProfile())}
+          onClick={() => { setEditing(emptyProfile()); setGuidedAnswers({}); setBlueprintTab('guided') }}
           className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition-all"
         >
           <Plus size={16} /> Novo Perfil
@@ -73,7 +116,7 @@ export default function ProfileManager() {
             </div>
             <h3 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Nenhum perfil criado</h3>
             <p className="text-sm text-gray-400 mb-5">Crie um perfil para personalizar a voz e o estilo dos seus carrosseis</p>
-            <button onClick={() => setEditing(emptyProfile())} className="px-5 py-2.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700">Criar perfil</button>
+            <button onClick={() => { setEditing(emptyProfile()); setGuidedAnswers({}) }} className="px-5 py-2.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700">Criar perfil</button>
           </div>
         )}
 
@@ -88,12 +131,13 @@ export default function ProfileManager() {
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-gray-900 dark:text-white text-sm">{p.name}</span>
                     {p.is_default && <span className="px-2 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-full text-xs font-semibold">Padrão</span>}
+                    {p.voiceBlueprint && <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-semibold">✦ Voz</span>}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.niche} · {p.tone} · {p.default_platform}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setEditing({ ...p })} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-400 hover:text-violet-600 transition-all">Editar</button>
+                <button onClick={() => handleEditOpen(p)} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-400 hover:text-violet-600 transition-all">Editar</button>
                 <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"><Trash2 size={14} /></button>
               </div>
             </div>
@@ -159,9 +203,82 @@ export default function ProfileManager() {
                   {editing.is_default && <Check size={12} />} Perfil padrão
                 </button>
               </div>
+
+              {/* Blueprint da Voz */}
+              <div className="pt-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Blueprint da Voz</span>
+                  <span className="text-xs text-gray-400">(opcional — calibra o conteúdo gerado para soar como você)</span>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl mb-4 w-fit">
+                  <button
+                    onClick={() => setBlueprintTab('guided')}
+                    className={cn('px-4 py-1.5 rounded-lg text-xs font-semibold transition-all', blueprintTab === 'guided' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700')}
+                  >
+                    Guiado
+                  </button>
+                  <button
+                    onClick={() => setBlueprintTab('direct')}
+                    className={cn('px-4 py-1.5 rounded-lg text-xs font-semibold transition-all', blueprintTab === 'direct' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700')}
+                  >
+                    Direto
+                  </button>
+                </div>
+
+                {blueprintTab === 'guided' ? (
+                  <div className="space-y-3">
+                    {VOICE_QUESTIONS.map(q => (
+                      <div key={q.key}>
+                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">{q.label}</label>
+                        <textarea
+                          value={guidedAnswers[q.key] || ''}
+                          onChange={e => setGuidedAnswers(prev => ({ ...prev, [q.key]: e.target.value }))}
+                          placeholder={q.placeholder}
+                          rows={2}
+                          className={`${inputCls} resize-none leading-relaxed`}
+                        />
+                      </div>
+                    ))}
+
+                    <button
+                      onClick={handleGenerateBlueprint}
+                      disabled={isGeneratingBlueprint}
+                      className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+                    >
+                      {isGeneratingBlueprint ? <><Loader2 size={16} className="animate-spin" /> Gerando Blueprint...</> : '✦ Gerar Blueprint com IA'}
+                    </button>
+
+                    {editing.voiceBlueprint && (
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Blueprint gerado — revise e edite se necessário:</label>
+                        <textarea
+                          value={editing.voiceBlueprint}
+                          onChange={e => setEditing({ ...editing, voiceBlueprint: e.target.value })}
+                          rows={12}
+                          className={`${inputCls} resize-none leading-relaxed font-mono text-xs`}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Escreva ou cole seu blueprint manualmente:</label>
+                    <textarea
+                      value={editing.voiceBlueprint || ''}
+                      onChange={e => setEditing({ ...editing, voiceBlueprint: e.target.value })}
+                      placeholder="Descreva seu tom de voz, vocabulário preferido, crenças, diferencial e regras de comunicação..."
+                      rows={14}
+                      className={`${inputCls} resize-none leading-relaxed`}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button onClick={handleSave} className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition-all">Salvar Perfil</button>
-                <button onClick={() => setEditing(null)} className="px-5 py-3 border border-gray-200 dark:border-gray-700 text-gray-500 rounded-xl text-sm hover:border-gray-300 transition-all">Cancelar</button>
+                <button onClick={() => { setEditing(null); setGuidedAnswers({}) }} className="px-5 py-3 border border-gray-200 dark:border-gray-700 text-gray-500 rounded-xl text-sm hover:border-gray-300 transition-all">Cancelar</button>
               </div>
             </div>
           </div>

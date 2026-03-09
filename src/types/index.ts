@@ -21,6 +21,7 @@ export interface SpecialistProfile {
   default_slide_count: SlideCount
   is_default: boolean
   created_at: string
+  voiceBlueprint?: string
 }
 
 export interface ProjectInputs {
