@@ -14,10 +14,9 @@ interface Props {
 }
 
 const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
-  { slide, index, total, palette, brand, width, height, titleFont = 'Inter, sans-serif', subtitleFont = 'Inter, sans-serif' },
+  { slide, palette, brand, width, height, titleFont = 'Inter, sans-serif', subtitleFont = 'Inter, sans-serif' },
   ref
 ) {
-  const isFirst = index === 0
   const titleLen = slide.headline.length
   const titleSize = titleLen > 50 ? (width < 400 ? 18 : 22) : titleLen > 30 ? (width < 400 ? 22 : 28) : (width < 400 ? 26 : 34)
   const subSize = width < 400 ? 13 : 15
@@ -28,8 +27,6 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
 
   const textColor = slide.imageUrl ? '#ffffff' : palette.accent
   const subColor = slide.imageUrl ? 'rgba(255,255,255,0.8)' : `${palette.accent}cc`
-  const accentColor = slide.imageUrl ? palette.primary : palette.primary
-
   const PAD = Math.round(width * 0.09)
 
   return (
@@ -49,16 +46,7 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
         fontFamily: 'Inter, sans-serif',
       }}
     >
-      {/* Top accent bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <div style={{ width: 32, height: 3, background: accentColor, borderRadius: 2 }} />
-        <div style={{ width: 10, height: 3, background: accentColor, opacity: 0.4, borderRadius: 2 }} />
-        {isFirst && (
-          <div style={{ marginLeft: 'auto', fontSize: 9, color: subColor, opacity: 0.7, fontFamily: 'monospace', letterSpacing: '2px', textTransform: 'uppercase' }}>
-            {brand || ''}
-          </div>
-        )}
-      </div>
+      <div />
 
       {/* Main content */}
       <div style={{
@@ -98,7 +86,6 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
         <span style={{ fontSize: 9, color: subColor, opacity: 0.6, letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace' }}>
           {brand || 'sua marca'}
         </span>
-        <span style={{ fontSize: 9, color: subColor, opacity: 0.5 }}>{index + 1}/{total}</span>
       </div>
     </div>
   )
