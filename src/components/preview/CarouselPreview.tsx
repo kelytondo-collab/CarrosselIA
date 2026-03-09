@@ -32,7 +32,7 @@ const DISP_W = 300
 const DISP_H = 375
 
 export default function CarouselPreview() {
-  const { setView, currentProject, currentCarousel, setCurrentCarousel, refreshProjects, apiKey } = useApp()
+  const { setView, currentProject, currentCarousel, setCurrentCarousel, refreshProjects, apiKey, expertPhotoBase64 } = useApp()
   const [tab, setTab] = useState<Tab>('slides')
   const [palette, setPalette] = useState(PALETTES[0])
   const [font, setFont] = useState(FONTS[0])
@@ -127,7 +127,7 @@ export default function CarouselPreview() {
         const url = await generateSlideImage(
           slides[i].visualPrompt,
           currentCarousel.format || '4:5',
-          currentProject?.inputs_json?.expertPhotoBase64
+          expertPhotoBase64
         )
         updatedSlides = updatedSlides.map((s, idx) =>
           idx === i ? { ...s, imageUrl: url, imageError: undefined } : s
@@ -165,7 +165,7 @@ export default function CarouselPreview() {
     setGeneratingImg(prev => new Set([...prev, idx]))
     const toastId = toast.loading(`Gerando imagem do slide ${idx + 1}...`)
     try {
-      const url = await generateSlideImage(finalPrompt, currentCarousel.format || '4:5', currentProject?.inputs_json?.expertPhotoBase64)
+      const url = await generateSlideImage(finalPrompt, currentCarousel.format || '4:5', expertPhotoBase64)
       const next = [...slides]
       next[idx] = { ...next[idx], imageUrl: url, imageError: undefined, visualPrompt: finalPrompt }
       saveSlides(next)

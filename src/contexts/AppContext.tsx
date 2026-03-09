@@ -27,6 +27,8 @@ interface AppCtx {
   setGenerationPhase: (p: string) => void
   generationProgress: number
   setGenerationProgress: (n: number) => void
+  expertPhotoBase64: string | undefined
+  setExpertPhotoBase64: (v: string | undefined) => void
 }
 
 const Ctx = createContext<AppCtx | null>(null)
@@ -42,6 +44,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationPhase, setGenerationPhase] = useState('')
   const [generationProgress, setGenerationProgress] = useState(0)
+  const [expertPhotoBase64, setExpertPhotoBase64] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     if (isDark) document.documentElement.classList.add('dark')
@@ -84,6 +87,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       isGenerating, setIsGenerating,
       generationPhase, setGenerationPhase,
       generationProgress, setGenerationProgress,
+      expertPhotoBase64, setExpertPhotoBase64,
     }}>
       {children}
     </Ctx.Provider>

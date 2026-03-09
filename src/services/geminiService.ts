@@ -7,7 +7,7 @@ export const initGemini = (apiKey: string) => {
   genAI = new GoogleGenerativeAI(apiKey)
 }
 
-const buildSystemPrompt = (tone: Tone, platform: Platform, niche: string): string => `
+const buildSystemPrompt = (tone: Tone, platform: Platform, niche: string, voiceBlueprint?: string): string => `
 Você é um especialista em copywriting e estratégia de conteúdo digital para ${platform}.
 Nicho: ${niche || 'marketing digital e empreendedorismo'}.
 Tom de voz: ${tone.toUpperCase()}
@@ -24,11 +24,12 @@ ${platform === 'instagram' ? '- Títulos até 60 chars, subtítulos até 120, CT
 ${platform === 'linkedin' ? '- Tom profissional, dados, legenda longa, máx 5 hashtags.' : ''}
 
 Retorne APENAS JSON válido sem markdown, sem \`\`\`json, apenas o objeto JSON puro.
-`
+${voiceBlueprint ? `\nBLUEPRINT DA VOZ:\n---\n${voiceBlueprint}\n---` : ''}`
 
 export const generateCarouselCopy = async (
   inputs: ProjectInputs,
-  onProgress?: (phase: string, pct: number) => void
+  onProgress?: (phase: string, pct: number) => void,
+  voiceBlueprint?: string
 ): Promise<CarouselData> => {
   if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
 
@@ -36,7 +37,7 @@ export const generateCarouselCopy = async (
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    systemInstruction: buildSystemPrompt(inputs.tone, inputs.platform, inputs.niche),
+    systemInstruction: buildSystemPrompt(inputs.tone, inputs.platform, inputs.niche, voiceBlueprint),
   })
 
   const prompt = `
@@ -57,7 +58,7 @@ Retorne JSON com esta estrutura exata:
       "id": 1,
       "headline": "título impactante até 60 chars",
       "subtitle": "subtítulo que complementa até 120 chars",
-      "visualPrompt": "descrição ultra-detalhada da imagem: cenário, iluminação, composição, emoção, estilo fotográfico, cores, SEM texto na imagem",
+      "visualPrompt": "descrição ultra-detalhada da imagem para o nicho ${inputs.niche}: cenário real e específico do nicho, pessoa do público-alvo (${inputs.niche} — mulher ou homem condizente com o público real do nicho, NUNCA homem de terno em nicho de saúde/estética/bem-estar), iluminação, composição, emoção, estilo fotográfico, cores, SEM texto na imagem",
       "emotion": "emoção que o slide desperta",
       "ctaType": "tipo de CTA se aplicável"
     }
@@ -121,6 +122,57 @@ Os slides intermediários = uma ideia completa cada.
     format: inputs.platform === 'linkedin' ? '1:1' : '4:5',
     generatedAt: new Date().toISOString(),
   }
+}
+
+export const generateVoiceBlueprint = async (
+  answers: Record<string, string>,
+  name: string,
+  niche: string
+): Promise<string> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+  const prompt = `Você é um especialista em identidade comunicativa e copywriting.
+Com base nas respostas abaixo de ${name} (nicho: ${niche || 'não informado'}), crie um Blueprint da Voz estruturado e detalhado.
+
+RESPOSTAS:
+- Como se comunica com seguidores: ${answers.comunicacao || '(não respondido)'}
+- Crenças centrais sobre sua área: ${answers.crencas || '(não respondido)'}
+- Palavras/expressões que sempre usa: ${answers.palavrasUsa || '(não respondido)'}
+- Palavras/abordagens que nunca usaria: ${answers.palavrasNunca || '(não respondido)'}
+- Transformação real que entrega: ${answers.transformacao || '(não respondido)'}
+- Diferencial no nicho: ${answers.diferencial || '(não respondido)'}
+- Como quer que a pessoa se sinta: ${answers.emocao || '(não respondido)'}
+- Descrição de um conteúdo perfeito: ${answers.referencia || '(não respondido)'}
+
+Estruture o Blueprint com estas 7 seções obrigatórias:
+
+## TOM E PRESENÇA
+[Descreva o tom geral, energia, postura comunicativa]
+
+## VOCABULÁRIO PREFERIDO
+[Liste palavras, expressões e construções que fazem parte da sua voz]
+
+## VOCABULÁRIO PROIBIDO
+[Liste palavras, abordagens e estilos que devem ser evitados]
+
+## CRENÇAS E POSICIONAMENTOS
+[As convicções centrais que guiam o conteúdo]
+
+## NARRATIVA CENTRAL
+[O fio condutor da história que ela conta — quem é, de onde veio, para onde vai]
+
+## DIFERENCIAL
+[O que torna esta voz única no nicho]
+
+## REGRAS DE OURO
+[5 a 7 regras práticas que todo conteúdo deve seguir]
+
+Escreva de forma direta, específica e utilizável. Evite generalidades. Este documento será injetado em prompts de IA para calibrar o conteúdo gerado.`
+
+  const result = await model.generateContent(prompt)
+  return result.response.text().trim()
 }
 
 // Extrai base64 puro (sem o prefixo data:image/...;base64,)
@@ -204,7 +256,8 @@ Requisitos técnicos:
 
 Estilo: Fotografia cinematográfica profissional, emocional, alta qualidade.
 Formato: ${formatDesc}.
-SEM texto, marcas d'água ou logos na imagem.`
+SEM texto, marcas d'água ou logos na imagem.
+IMPORTANTE: A imagem deve representar fielmente o nicho e o público descrito no prompt. Se o nicho for saúde, estética, bem-estar ou beleza, a imagem deve mostrar mulheres em contexto real do nicho — NUNCA homens de terno ou ambiente corporativo genérico.`
         }]
       }],
       generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,

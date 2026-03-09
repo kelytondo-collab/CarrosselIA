@@ -30,7 +30,7 @@ const inputCls = 'w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gra
 const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5'
 
 export default function InputSection() {
-  const { setView, setCurrentProject, setCurrentCarousel, refreshProjects, setIsGenerating, setGenerationPhase, setGenerationProgress, apiKey } = useApp()
+  const { setView, setCurrentProject, setCurrentCarousel, refreshProjects, setIsGenerating, setGenerationPhase, setGenerationProgress, apiKey, setExpertPhotoBase64 } = useApp()
   const [showAdvanced, setShowAdvanced] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -82,12 +82,13 @@ export default function InputSection() {
         setGenerationPhase(phase)
         setGenerationProgress(pct)
         toast.loading(phase, { id: toastId })
-      })
+      }, defaultProfile?.voiceBlueprint)
 
       const project = createProject({ ...form, projectName: form.projectName || `${form.theme} — ${form.product}` })
       updateProjectCarousel(project.id, carousel)
       refreshProjects()
 
+      setExpertPhotoBase64(form.expertPhotoBase64)
       setCurrentProject({ ...project, current_carousel_data: carousel })
       setCurrentCarousel(carousel)
       setView('preview')
