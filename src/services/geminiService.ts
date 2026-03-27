@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import type { CarouselData, ProjectInputs, SlideData, Tone, Platform } from '../types'
+import type { CarouselData, ProjectInputs, SlideData, Tone, Platform, PostData, PostInputs, StoriesData, StoriesInputs, StorySlide, Caption } from '../types'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -85,11 +85,11 @@ DADOS DO PROJETO:
 - Objetivo: ${inputs.objective}
 - Preço/Investimento: ${inputs.investment}
 - Contexto Visual: ${inputs.contextInfo}
-- Texto Base/Referência: ${inputs.baseText}
 - Número de Slides: ${inputs.slideCount}
 - Plataforma: ${inputs.platform}
 - Tom: ${inputs.tone}
 - Nicho: ${inputs.niche}
+${inputs.baseText ? `\nCONTEÚDO BASE (use como referência principal — extraia ideias, insights e linguagem deste texto):\n${inputs.baseText}` : ''}
 
 O slide 1 deve ser a CAPA com gancho poderoso.
 O slide ${inputs.slideCount} deve ser o FECHAMENTO com CTA emocional.
@@ -122,6 +122,245 @@ Os slides intermediários = uma ideia completa cada.
     format: inputs.platform === 'linkedin' ? '1:1' : '4:5',
     generatedAt: new Date().toISOString(),
   }
+}
+
+// ── FORMAT-ONLY: Distributes text into slides WITHOUT rewriting ──
+
+export const generateCarouselFormat = async (
+  inputs: ProjectInputs,
+  onProgress?: (phase: string, pct: number) => void,
+): Promise<CarouselData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  onProgress?.('Analisando conteúdo...', 15)
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
+O texto abaixo foi criado com a essência única do especialista.
+REGRAS ABSOLUTAS:
+1. NÃO reescreva NENHUMA frase. Use as palavras EXATAS do texto original.
+2. NÃO adicione ideias novas. NÃO "melhore" o texto. NÃO troque vocabulário.
+3. DISTRIBUA o conteúdo pelos slides mantendo a progressão lógica.
+4. Para a caption: EXTRAIA hook e CTA do próprio texto. NÃO invente.
+5. Retorne APENAS JSON válido sem markdown.`,
+  })
+
+  const prompt = `
+TEXTO DO ESPECIALISTA (use EXATAMENTE estas palavras):
+---
+${inputs.baseText}
+---
+
+Distribua este texto em ${inputs.slideCount} slides para ${inputs.platform}.
+Cada slide deve ter um "headline" (frase principal, até 60 chars, EXTRAÍDA do texto) e um "subtitle" (complemento, até 120 chars, EXTRAÍDO do texto).
+
+Retorne JSON:
+{
+  "strategy": {
+    "persona": "detecte do texto",
+    "painPoint": "detecte do texto",
+    "desire": "detecte do texto",
+    "narrativePath": "detecte do texto",
+    "consciousnessLevel": "detecte do texto",
+    "niche": "${inputs.niche}",
+    "hook": "extraia do texto"
+  },
+  "slides": [
+    { "id": 1, "headline": "frase EXATA do texto", "subtitle": "complemento EXATO do texto", "visualPrompt": "descrição visual", "emotion": "emoção" }
+  ],
+  "caption": {
+    "hook": "EXTRAIA do texto — primeira frase mais impactante",
+    "body": "EXTRAIA do texto — corpo principal",
+    "cta": "EXTRAIA do texto — chamada para ação",
+    "hashtags": "#hashtag1 #hashtag2 ...",
+    "altText": "descrição acessível"
+  },
+  "manychat": { "keyword": "", "flow1": "", "flow2": "", "flow3": "" },
+  "seoKeywords": []
+}
+
+IMPORTANTE: O slide 1 = capa (hook mais forte do texto). Slide ${inputs.slideCount} = fechamento/CTA do texto.
+NÃO reescreva. NÃO melhore. DISTRIBUA.`
+
+  onProgress?.('Formatando em slides...', 40)
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+
+  onProgress?.('Processando resultado...', 80)
+
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = JSON.parse(jsonText) as CarouselData
+
+  const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
+    ...s,
+    id: i + 1,
+    isGeneratingImage: false,
+    style: {},
+  }))
+
+  onProgress?.('Pronto!', 100)
+
+  return {
+    ...parsed,
+    slides,
+    format: inputs.platform === 'linkedin' ? '1:1' : '4:5',
+    generatedAt: new Date().toISOString(),
+  }
+}
+
+// ── Regenerate single caption section ──
+
+export const regenerateCaptionSection = async (
+  section: 'hook' | 'body' | 'cta' | 'hashtags',
+  currentCaption: Caption,
+  context: { niche: string; tone: Tone; theme?: string },
+  voiceBlueprint?: string,
+): Promise<string> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um copywriter expert para Instagram. Nicho: ${context.niche}. Tom: ${context.tone}.
+${voiceBlueprint ? `BLUEPRINT DA VOZ:\n${voiceBlueprint}` : ''}
+Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
+  })
+
+  const sectionDesc: Record<string, string> = {
+    hook: 'a PRIMEIRA LINHA da legenda — o gancho que para o scroll. Curta, direta, emocional.',
+    body: 'o CORPO da legenda — com quebras de linha e emojis estratégicos. Desenvolva a ideia com clareza.',
+    cta: 'a CHAMADA PARA AÇÃO — o que a pessoa deve fazer. Ex: "Comenta [PALAVRA] que te envio..."',
+    hashtags: '20-30 HASHTAGS relevantes para o nicho, separadas por espaço.',
+  }
+
+  const prompt = `
+Reescreva APENAS ${sectionDesc[section]}
+
+Contexto da legenda atual:
+- Hook: ${currentCaption.hook}
+- Corpo: ${currentCaption.body}
+- CTA: ${currentCaption.cta}
+${context.theme ? `- Tema: ${context.theme}` : ''}
+
+Mantenha a coerência com o restante da legenda.
+Retorne SOMENTE o texto da seção "${section}", nada mais.`
+
+  const result = await model.generateContent(prompt)
+  return result.response.text().trim()
+}
+
+// ── FORMAT-ONLY for Post ──
+
+export const generatePostFormat = async (
+  baseText: string,
+  niche: string,
+  onProgress?: (phase: string, pct: number) => void,
+): Promise<PostData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  onProgress?.('Formatando post...', 20)
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
+REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA o conteúdo em headline + subtitle + caption.
+Retorne APENAS JSON válido.`,
+  })
+
+  const prompt = `
+TEXTO DO ESPECIALISTA:
+---
+${baseText}
+---
+
+Formate este texto como POST ESTÁTICO Instagram (1080x1080).
+EXTRAIA do texto (NÃO reescreva):
+{
+  "headline": "frase EXATA mais impactante do texto (até 50 chars)",
+  "subtitle": "complemento EXATO do texto (até 100 chars)",
+  "caption": {
+    "hook": "EXTRAIA do texto",
+    "body": "EXTRAIA do texto",
+    "cta": "EXTRAIA do texto",
+    "hashtags": "#hashtags relevantes",
+    "altText": "descrição acessível"
+  },
+  "visualPrompt": "descrição visual para o nicho ${niche}",
+  "seoKeywords": []
+}`
+
+  onProgress?.('Processando...', 60)
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = JSON.parse(jsonText)
+
+  onProgress?.('Pronto!', 100)
+
+  return { ...parsed, layout: 'minimal', generatedAt: new Date().toISOString() }
+}
+
+// ── FORMAT-ONLY for Stories ──
+
+export const generateStoriesFormat = async (
+  baseText: string,
+  niche: string,
+  storyCount: number,
+  onProgress?: (phase: string, pct: number) => void,
+): Promise<StoriesData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  onProgress?.('Formatando stories...', 20)
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
+REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA em stories verticais.
+Retorne APENAS JSON válido.`,
+  })
+
+  const prompt = `
+TEXTO DO ESPECIALISTA:
+---
+${baseText}
+---
+
+Distribua em ${storyCount} STORIES (1080x1920 vertical).
+EXTRAIA do texto (NÃO reescreva):
+{
+  "slides": [
+    { "id": 1, "type": "content", "headline": "frase EXATA (até 40 chars)", "body": "complemento EXATO (até 80 chars)", "visualPrompt": "descrição visual" }
+  ],
+  "caption": {
+    "hook": "EXTRAIA do texto",
+    "body": "EXTRAIA do texto",
+    "cta": "EXTRAIA do texto",
+    "hashtags": "",
+    "altText": ""
+  }
+}
+
+Story 1 = gancho. Último = CTA. Intermediários = conteúdo.
+Textos CURTOS e EXTRAÍDOS do original.`
+
+  onProgress?.('Processando...', 60)
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = JSON.parse(jsonText)
+
+  const slides: StorySlide[] = (parsed.slides || []).map((s: StorySlide, i: number) => ({
+    ...s,
+    id: i + 1,
+    layout: 'minimal' as const,
+  }))
+
+  onProgress?.('Pronto!', 100)
+
+  return { slides, caption: parsed.caption, generatedAt: new Date().toISOString() }
 }
 
 export const generateVoiceBlueprint = async (
@@ -264,5 +503,240 @@ IMPORTANTE: A imagem deve representar fielmente o nicho e o público descrito no
     } as any)
 
     return extractImage(result)
+  }
+}
+
+// ── Post Estático ──
+
+export const generatePostCopy = async (
+  inputs: PostInputs,
+  onProgress?: (phase: string, pct: number) => void,
+  voiceBlueprint?: string
+): Promise<PostData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  onProgress?.('Criando post estático...', 20)
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(inputs.tone, 'instagram', inputs.niche, voiceBlueprint),
+  })
+
+  const prompt = `
+Gere um POST ESTÁTICO para Instagram (formato quadrado 1080x1080).
+Retorne APENAS JSON válido:
+{
+  "headline": "título impactante até 50 chars",
+  "subtitle": "subtítulo complementar até 100 chars",
+  "caption": {
+    "hook": "primeira linha que para o scroll",
+    "body": "corpo com quebras de linha e emojis estratégicos",
+    "cta": "chamada para ação",
+    "hashtags": "#hashtag1 #hashtag2 ... (20-30 hashtags)",
+    "altText": "descrição acessível"
+  },
+  "visualPrompt": "descrição ultra-detalhada da imagem de fundo: cenário, pessoa, iluminação, composição, cores, estilo fotográfico, SEM texto na imagem",
+  "seoKeywords": ["palavra1", "palavra2", "palavra3"]
+}
+
+DADOS:
+- Tema: ${inputs.theme}
+- Objetivo: ${inputs.objective}
+- Tom: ${inputs.tone}
+- Nicho: ${inputs.niche}
+${inputs.baseText ? `\nCONTEÚDO BASE (use como referência principal para criar o post):\n${inputs.baseText}` : ''}
+
+O título deve ser CURTO e FORTE. O visual deve ser profissional e condizente com o nicho.`
+
+  onProgress?.('Gerando copy...', 50)
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = JSON.parse(jsonText)
+
+  onProgress?.('Pronto!', 100)
+
+  return {
+    ...parsed,
+    layout: 'minimal',
+    generatedAt: new Date().toISOString(),
+  }
+}
+
+// ── Clone Master (Analyze Reference) ──
+
+export const analyzeReference = async (
+  imageBase64: string,
+  niche: string,
+  tone: Tone
+): Promise<{ colors: string[]; layout: string; typography: string; mood: string; suggestion: string }> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini')
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+  const mimeType = getMimeType(imageBase64)
+  const base64 = stripDataUrl(imageBase64)
+
+  const result = await model.generateContent({
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType, data: base64 } },
+        {
+          text: `Analise esta imagem de referência (screenshot de um post/anúncio de redes sociais).
+Extraia:
+1. Cores predominantes (hex codes)
+2. Layout e composição
+3. Tipografia (estilo das fontes)
+4. Mood/atmosfera
+5. Sugestão de como recriar algo similar para o nicho "${niche}" com tom "${tone}"
+
+Retorne APENAS JSON:
+{
+  "colors": ["#hex1", "#hex2", "#hex3", "#hex4"],
+  "layout": "descrição do layout",
+  "typography": "estilo tipográfico",
+  "mood": "atmosfera/mood",
+  "suggestion": "como recriar para o nicho com identidade própria"
+}`
+        }
+      ]
+    }],
+  })
+
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  return JSON.parse(jsonText)
+}
+
+export const generateFromReference = async (
+  analysis: { colors: string[]; layout: string; typography: string; mood: string; suggestion: string },
+  theme: string,
+  niche: string,
+  tone: Tone,
+  voiceBlueprint?: string
+): Promise<PostData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini')
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
+  })
+
+  const prompt = `
+Crie um POST ESTÁTICO Instagram (1080x1080) INSPIRADO nesta análise de referência:
+- Layout: ${analysis.layout}
+- Mood: ${analysis.mood}
+- Tipografia: ${analysis.typography}
+- Sugestão: ${analysis.suggestion}
+
+MAS com a identidade do especialista (nicho: ${niche}, tom: ${tone}).
+Tema: ${theme}
+
+Retorne APENAS JSON:
+{
+  "headline": "título impactante até 50 chars",
+  "subtitle": "subtítulo até 100 chars",
+  "caption": {
+    "hook": "primeira linha",
+    "body": "corpo com emojis",
+    "cta": "chamada para ação",
+    "hashtags": "#h1 #h2 ... (20-30)",
+    "altText": "descrição acessível"
+  },
+  "visualPrompt": "descrição da imagem inspirada no mood/layout de referência mas com a identidade do especialista, SEM texto na imagem",
+  "seoKeywords": ["kw1", "kw2"]
+}`
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = JSON.parse(jsonText)
+
+  return { ...parsed, layout: 'minimal', generatedAt: new Date().toISOString() }
+}
+
+// ── Stories ──
+
+export const generateStoriesCopy = async (
+  inputs: StoriesInputs,
+  onProgress?: (phase: string, pct: number) => void,
+  voiceBlueprint?: string
+): Promise<StoriesData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  onProgress?.('Criando stories...', 20)
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(inputs.tone, 'instagram', inputs.niche, voiceBlueprint),
+  })
+
+  const typesDesc = inputs.types.map(t =>
+    t === 'content' ? 'conteúdo educativo/inspirador' :
+    t === 'poll' ? 'enquete com 2-4 opções' :
+    'caixinha de pergunta'
+  ).join(', ')
+
+  const prompt = `
+Gere uma SEQUÊNCIA DE ${inputs.storyCount} STORIES para Instagram (formato vertical 1080x1920).
+Tipos solicitados: ${typesDesc}
+
+Retorne APENAS JSON:
+{
+  "slides": [
+    {
+      "id": 1,
+      "type": "content|poll|question",
+      "headline": "título forte até 40 chars",
+      "body": "texto curto até 80 chars",
+      "visualPrompt": "descrição da imagem de fundo vertical, cinematográfica, SEM texto",
+      "questionText": "texto da caixinha de pergunta (só se type=question)",
+      "pollQuestion": "pergunta da enquete (só se type=poll)",
+      "pollOptions": ["opção 1", "opção 2"]
+    }
+  ],
+  "caption": {
+    "hook": "texto para compartilhar nos stories",
+    "body": "contexto",
+    "cta": "chamada",
+    "hashtags": "",
+    "altText": ""
+  }
+}
+
+REGRAS:
+- Story 1 = GANCHO (para o scroll)
+- Stories intermediários = conteúdo/interação
+- Último story = CTA
+- Safe zones: 50px topo (nome do perfil), 250px base (respostas/CTA)
+- Textos CURTOS e IMPACTANTES (vertical = pouco espaço)
+
+DADOS:
+- Tema: ${inputs.theme}
+- Objetivo: ${inputs.objective}
+- Nicho: ${inputs.niche}
+- Tom: ${inputs.tone}
+${inputs.baseText ? `\nCONTEÚDO BASE (use como referência para criar os stories):\n${inputs.baseText}` : ''}`
+
+  onProgress?.('Gerando stories...', 50)
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = JSON.parse(jsonText)
+
+  const slides: StorySlide[] = (parsed.slides || []).map((s: StorySlide, i: number) => ({
+    ...s,
+    id: i + 1,
+    layout: 'minimal' as const,
+  }))
+
+  onProgress?.('Pronto!', 100)
+
+  return {
+    slides,
+    caption: parsed.caption,
+    generatedAt: new Date().toISOString(),
   }
 }

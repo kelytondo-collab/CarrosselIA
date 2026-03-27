@@ -1,4 +1,4 @@
-import type { Project, SpecialistProfile, CarouselData, ProjectInputs } from '../types'
+import type { Project, SpecialistProfile, CarouselData, ProjectInputs, PostData, StoriesData, ProjectType } from '../types'
 
 const KEYS = {
   projects: 'postativo_projects',
@@ -57,16 +57,34 @@ export const getProjects = (): Project[] =>
 export const getProject = (id: string): Project | undefined =>
   getProjects().find(p => p.id === id)
 
-export const createProject = (inputs: ProjectInputs): Project => {
+export const createProject = (inputs: ProjectInputs, type: ProjectType = 'carousel'): Project => {
   // Strip expertPhotoBase64 (large base64) before saving to localStorage
   const { expertPhotoBase64: _photo, ...inputsToSave } = inputs
   const project: Project = {
     id: crypto.randomUUID(),
     name: inputs.projectName || `Projeto ${Date.now()}`,
+    type,
     theme: inputs.theme,
     product: inputs.product,
     platform: inputs.platform,
     inputs_json: inputsToSave,
+    status: 'active',
+    is_favorite: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+  const projects = getProjects()
+  projects.unshift(project)
+  save(KEYS.projects, projects)
+  return project
+}
+
+export const createSimpleProject = (name: string, theme: string, type: ProjectType): Project => {
+  const project: Project = {
+    id: crypto.randomUUID(),
+    name,
+    type,
+    theme,
     status: 'active',
     is_favorite: false,
     created_at: new Date().toISOString(),
@@ -113,4 +131,29 @@ export const archiveProject = (id: string): void => {
 
 export const deleteProject = (id: string): void => {
   save(KEYS.projects, getProjects().filter(p => p.id !== id))
+}
+
+export const updateProjectPost = (id: string, data: PostData): void => {
+  const projects = getProjects()
+  const idx = projects.findIndex(p => p.id === id)
+  if (idx >= 0) {
+    const dataToSave: PostData = { ...data, imageUrl: undefined }
+    projects[idx].current_post_data = dataToSave
+    projects[idx].updated_at = new Date().toISOString()
+    save(KEYS.projects, projects)
+  }
+}
+
+export const updateProjectStories = (id: string, data: StoriesData): void => {
+  const projects = getProjects()
+  const idx = projects.findIndex(p => p.id === id)
+  if (idx >= 0) {
+    const dataToSave: StoriesData = {
+      ...data,
+      slides: data.slides.map(s => ({ ...s, imageUrl: undefined })),
+    }
+    projects[idx].current_stories_data = dataToSave
+    projects[idx].updated_at = new Date().toISOString()
+    save(KEYS.projects, projects)
+  }
 }

@@ -4,7 +4,7 @@ import type { Project, CarouselData, SpecialistProfile } from '../types'
 import { loadDarkMode, saveDarkMode, loadApiKey, getProjects, getProfiles, saveApiKey } from '../services/storageService'
 import { initGemini } from '../services/geminiService'
 
-type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings'
+type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel'
 
 interface AppCtx {
   view: View

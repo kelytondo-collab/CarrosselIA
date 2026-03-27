@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Search, Heart, MoreVertical, Archive, Trash2, Calendar, Layers, Star } from 'lucide-react'
+import { Search, Heart, MoreVertical, Archive, Trash2, Calendar, Layers, Star, Square, Film } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import { toggleFavorite, archiveProject, deleteProject } from '../../services/storageService'
 import type { Project } from '../../types'
@@ -12,6 +12,12 @@ const PLATFORM_COLORS: Record<string, string> = {
   linkedin: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   pinterest: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
   threads: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+}
+
+const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
+  carousel: { label: 'Carrossel', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' },
+  post: { label: 'Post', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  stories: { label: 'Stories', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
 }
 
 function ProjectCard({ project, onOpen, onRefresh }: { project: Project; onOpen: () => void; onRefresh: () => void }) {
@@ -80,7 +86,12 @@ function ProjectCard({ project, onOpen, onRefresh }: { project: Project; onOpen:
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {project.type && TYPE_BADGES[project.type] && (
+          <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', TYPE_BADGES[project.type].cls)}>
+            {TYPE_BADGES[project.type].label}
+          </span>
+        )}
         {project.platform && (
           <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', PLATFORM_COLORS[project.platform])}>
             {project.platform}
@@ -92,6 +103,18 @@ function ProjectCard({ project, onOpen, onRefresh }: { project: Project; onOpen:
             {project.current_carousel_data.slides?.length || 0} slides
           </span>
         )}
+        {project.current_stories_data && (
+          <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <Film size={11} />
+            {project.current_stories_data.slides?.length || 0} stories
+          </span>
+        )}
+        {project.current_post_data && (
+          <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <Square size={11} />
+            1080×1080
+          </span>
+        )}
       </div>
 
       {/* Date */}
@@ -101,7 +124,7 @@ function ProjectCard({ project, onOpen, onRefresh }: { project: Project; onOpen:
       </div>
 
       {/* Has content indicator */}
-      {project.current_carousel_data && (
+      {(project.current_carousel_data || project.current_post_data || project.current_stories_data) && (
         <div className="absolute top-3 right-12">
           <Star size={10} className="text-amber-400 fill-amber-400" />
         </div>
@@ -122,11 +145,17 @@ export default function Dashboard() {
 
   const openProject = (p: Project) => {
     setCurrentProject(p)
-    if (p.current_carousel_data) {
-      setCurrentCarousel(p.current_carousel_data)
-      setView('preview')
+    if (p.type === 'post') {
+      setView(p.current_post_data ? 'post-preview' as any : 'post-editor' as any)
+    } else if (p.type === 'stories') {
+      setView(p.current_stories_data ? 'stories-preview' as any : 'stories-editor' as any)
     } else {
-      setView('editor')
+      if (p.current_carousel_data) {
+        setCurrentCarousel(p.current_carousel_data)
+        setView('preview')
+      } else {
+        setView('editor')
+      }
     }
   }
 
@@ -137,14 +166,29 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Seus Projetos</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{active.length} carrosseis criados</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{active.length} projetos criados</p>
           </div>
+        </div>
+
+        {/* Quick create buttons */}
+        <div className="flex gap-3 mb-5">
           <button
             onClick={() => { setCurrentProject(null); setCurrentCarousel(null); setView('editor') }}
             className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
           >
-            <Plus size={18} />
-            <span className="hidden sm:inline">Novo carrossel</span>
+            <Layers size={16} /> Carrossel
+          </button>
+          <button
+            onClick={() => { setCurrentProject(null); setView('post-editor' as any) }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
+          >
+            <Square size={16} /> Post Estático
+          </button>
+          <button
+            onClick={() => { setCurrentProject(null); setView('stories-editor' as any) }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
+          >
+            <Film size={16} /> Stories
           </button>
         </div>
 
@@ -187,16 +231,8 @@ export default function Dashboard() {
               {search ? 'Nenhum resultado encontrado' : 'Nenhum projeto ainda'}
             </h3>
             <p className="text-sm text-gray-400 mb-6">
-              {search ? 'Tente outra busca' : 'Crie seu primeiro carrossel com IA'}
+              {search ? 'Tente outra busca' : 'Use os botões acima para criar seu primeiro conteúdo'}
             </p>
-            {!search && (
-              <button
-                onClick={() => { setCurrentProject(null); setCurrentCarousel(null); setView('editor') }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white rounded-xl font-semibold text-sm hover:bg-violet-700 transition-all"
-              >
-                <Plus size={16} /> Criar agora
-              </button>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

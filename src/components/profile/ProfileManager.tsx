@@ -11,7 +11,7 @@ const TONES: Tone[] = ['profissional', 'descontraído', 'inspirador', 'urgente',
 const PLATFORMS: Platform[] = ['instagram', 'linkedin', 'threads', 'pinterest']
 const SLIDE_COUNTS: SlideCount[] = [5, 7, 8, 10]
 
-const DEFAULT_PALETTE: ColorPalette = { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc' }
+const DEFAULT_PALETTE: ColorPalette = { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc', background: '#0f0a1a', text: '#ffffff' }
 
 const VOICE_QUESTIONS: { key: string; label: string; placeholder: string }[] = [
   { key: 'comunicacao', label: 'Como você se comunica com seus seguidores?', placeholder: 'Ex: De forma direta e acolhedora, como uma conversa entre amigas...' },

@@ -1,11 +1,25 @@
-import { LayoutDashboard, PlusCircle, User, Settings, Moon, Sun, Sparkles, X, Zap } from 'lucide-react'
+import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
 
-type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings'
+type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel'
 
-const NAV = [
+const NAV_MAIN = [
   { id: 'dashboard' as View, label: 'Projetos', icon: LayoutDashboard },
+]
+
+const NAV_CREATE = [
+  { id: 'editor' as View, label: 'Carrossel', icon: Layers, desc: '1080x1350' },
+  { id: 'post-editor' as View, label: 'Post Estatico', icon: Square, desc: '1080x1080' },
+  { id: 'stories-editor' as View, label: 'Stories', icon: Film, desc: '1080x1920' },
+]
+
+const NAV_VIDEO = [
+  { id: 'quote-video' as View, label: 'Video Citacao', icon: Video, desc: 'Reel/Feed' },
+  { id: 'carousel-reel' as View, label: 'Carrossel Reel', icon: Clapperboard, desc: 'Auto-scroll' },
+]
+
+const NAV_BOTTOM = [
   { id: 'profiles' as View, label: 'Perfis', icon: User },
   { id: 'settings' as View, label: 'Configurações', icon: Settings },
 ]
@@ -27,7 +41,7 @@ export default function Sidebar({ onClose }: Props) {
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center">
             <Sparkles size={16} className="text-white" />
           </div>
-          <span className="font-bold text-gray-900 dark:text-white text-sm">Carrossel IA</span>
+          <span className="font-bold text-gray-900 dark:text-white text-sm">Post Ativo AI</span>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 lg:hidden">
@@ -36,20 +50,81 @@ export default function Sidebar({ onClose }: Props) {
         )}
       </div>
 
-      {/* New button */}
-      <div className="px-4 py-4">
-        <button
-          onClick={() => go('editor')}
-          className="w-full flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
-        >
-          <PlusCircle size={18} />
-          Novo Carrossel
-        </button>
+      {/* Projects */}
+      <div className="px-3 pt-4 pb-2">
+        {NAV_MAIN.map(item => (
+          <button
+            key={item.id}
+            onClick={() => go(item.id)}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+              view === item.id
+                ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <item.icon size={18} />
+            {item.label}
+          </button>
+        ))}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-1">
-        {NAV.map(item => (
+      {/* Create section */}
+      <div className="px-3 pb-2">
+        <p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Criar</p>
+        <div className="space-y-0.5">
+          {NAV_CREATE.map(item => (
+            <button
+              key={item.id}
+              onClick={() => go(item.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                view === item.id || (item.id === 'editor' && view === 'preview') || (item.id === 'post-editor' && view === 'post-preview') || (item.id === 'stories-editor' && view === 'stories-preview')
+                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              <item.icon size={18} />
+              <div className="flex flex-col items-start">
+                <span>{item.label}</span>
+                <span className="text-[10px] opacity-50">{item.desc}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Video section */}
+      <div className="px-3 pb-2">
+        <p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video</p>
+        <div className="space-y-0.5">
+          {NAV_VIDEO.map(item => (
+            <button
+              key={item.id}
+              onClick={() => go(item.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                view === item.id
+                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              <item.icon size={18} />
+              <div className="flex flex-col items-start">
+                <span>{item.label}</span>
+                <span className="text-[10px] opacity-50">{item.desc}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Bottom nav */}
+      <nav className="px-3 pb-2 space-y-0.5">
+        {NAV_BOTTOM.map(item => (
           <button
             key={item.id}
             onClick={() => go(item.id)}
@@ -81,7 +156,7 @@ export default function Sidebar({ onClose }: Props) {
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
-        <span className="text-xs text-gray-400">v1.0</span>
+        <span className="text-xs text-gray-400">v2.0</span>
         <button
           onClick={toggleDark}
           className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"

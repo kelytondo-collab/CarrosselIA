@@ -1,31 +1,68 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { ChangeEvent } from 'react'
-import { ArrowLeft, Download, FileArchive, Image, Palette, Type, Wand2, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Download, FileArchive, Image, Palette, Type, Wand2, Copy, Check, LayoutGrid } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import SlideCard from './SlideCard'
-import type { ColorPalette, SlideData } from '../../types'
+import CaptionEditor from '../caption/CaptionEditor'
+import type { ColorPalette, SlideData, Caption } from '../../types'
+import type { SlideTemplate } from '../shared/LayoutTemplates'
+import { TEMPLATES } from '../shared/LayoutTemplates'
+import GradientPicker, { GRADIENT_PRESETS, BackgroundTypeSelector } from '../shared/GradientPicker'
+import type { BackgroundType } from '../shared/GradientPicker'
 import { exportSlideAsImage, exportAllSlidesAsZip, exportCaptionAsTxt, exportManyChatAsTxt } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
-import { updateProjectCarousel } from '../../services/storageService'
+import { updateProjectCarousel, getDefaultProfile } from '../../services/storageService'
+import { saveCarouselImages, restoreCarouselImages } from '../../services/imageCache'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
 type Tab = 'slides' | 'estrategia' | 'legenda' | 'manychat'
 
-const PALETTES: { id: string; label: string; p: ColorPalette }[] = [
-  { id: 'violet', label: 'Violeta', p: { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc' } },
-  { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa' } },
-  { id: 'rose', label: 'Rosa', p: { primary: '#ec4899', secondary: '#1f001a', accent: '#fff' } },
-  { id: 'cyan', label: 'Ciano', p: { primary: '#06b6d4', secondary: '#0c1a2e', accent: '#f0f9ff' } },
-  { id: 'emerald', label: 'Verde', p: { primary: '#10b981', secondary: '#052e16', accent: '#f0fdf4' } },
-  { id: 'white', label: 'Branco', p: { primary: '#1e293b', secondary: '#f8fafc', accent: '#1e293b' } },
-]
+function buildPalettes(): { id: string; label: string; p: ColorPalette }[] {
+  const defaultProfile = getDefaultProfile()
+  const brandKit = defaultProfile?.brandKit
+  const base: { id: string; label: string; p: ColorPalette }[] = []
 
-const FONTS = [
-  { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' },
-  { id: 'georgia', label: 'Clássica', title: 'Georgia, serif', sub: 'Georgia, serif' },
-  { id: 'helvetica', label: 'Bold', title: '"Helvetica Neue", Arial, sans-serif', sub: 'Arial, sans-serif' },
-]
+  if (brandKit) {
+    base.push({
+      id: 'brand',
+      label: defaultProfile?.name || 'Sua Marca',
+      p: brandKit.colors,
+    })
+  }
+
+  return [
+    ...base,
+    { id: 'violet', label: 'Violeta', p: { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc', background: '#0f0a1a', text: '#ffffff' } },
+    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#fafafa' } },
+    { id: 'rose', label: 'Rosa', p: { primary: '#ec4899', secondary: '#1f001a', accent: '#fff', background: '#1f001a', text: '#ffffff' } },
+    { id: 'cyan', label: 'Ciano', p: { primary: '#06b6d4', secondary: '#0c1a2e', accent: '#f0f9ff', background: '#0c1a2e', text: '#f0f9ff' } },
+    { id: 'emerald', label: 'Verde', p: { primary: '#10b981', secondary: '#052e16', accent: '#f0fdf4', background: '#052e16', text: '#f0fdf4' } },
+    { id: 'white', label: 'Branco', p: { primary: '#1e293b', secondary: '#f8fafc', accent: '#1e293b', background: '#f8fafc', text: '#1e293b' } },
+  ]
+}
+
+function buildFonts(): { id: string; label: string; title: string; sub: string }[] {
+  const defaultProfile = getDefaultProfile()
+  const brandKit = defaultProfile?.brandKit
+  const base: { id: string; label: string; title: string; sub: string }[] = []
+
+  if (brandKit) {
+    base.push({
+      id: 'brand',
+      label: 'Sua Marca',
+      title: `"${brandKit.fonts.title.family}", ${brandKit.fonts.title.category}`,
+      sub: `"${brandKit.fonts.body.family}", ${brandKit.fonts.body.category}`,
+    })
+  }
+
+  return [
+    ...base,
+    { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' },
+    { id: 'georgia', label: 'Clássica', title: 'Georgia, serif', sub: 'Georgia, serif' },
+    { id: 'helvetica', label: 'Bold', title: '"Helvetica Neue", Arial, sans-serif', sub: 'Arial, sans-serif' },
+  ]
+}
 
 // Display sizes (4:5 ratio)
 const DISP_W = 300
@@ -34,6 +71,8 @@ const DISP_H = 375
 export default function CarouselPreview() {
   const { setView, currentProject, currentCarousel, setCurrentCarousel, refreshProjects, apiKey, expertPhotoBase64 } = useApp()
   const [tab, setTab] = useState<Tab>('slides')
+  const PALETTES = buildPalettes()
+  const FONTS = buildFonts()
   const [palette, setPalette] = useState(PALETTES[0])
   const [font, setFont] = useState(FONTS[0])
   const [brand, setBrand] = useState('')
@@ -49,7 +88,21 @@ export default function CarouselPreview() {
   const [downloadingSlide, setDownloadingSlide] = useState<number | null>(null)
   const [dlAllLoading, setDlAllLoading] = useState(false)
   const [copied, setCopied] = useState('')
+  const [slideTemplates, setSlideTemplates] = useState<Record<number, SlideTemplate>>({})
+  const [slideBgTypes, setSlideBgTypes] = useState<Record<number, BackgroundType>>({})
+  const [customGradient, setCustomGradient] = useState(GRADIENT_PRESETS[0].id)
+  const [showTemplates, setShowTemplates] = useState(false)
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // Restore cached images on mount
+  useEffect(() => {
+    if (currentProject?.id && slides.length > 0) {
+      restoreCarouselImages(currentProject.id, slides).then(restored => {
+        const hasChanges = restored.some((s, i) => s.imageUrl !== slides[i].imageUrl)
+        if (hasChanges) setSlides(restored as SlideData[])
+      })
+    }
+  }, [currentProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!currentCarousel) {
     return (
@@ -73,6 +126,8 @@ export default function CarouselPreview() {
       setCurrentCarousel(updated)
       updateProjectCarousel(currentProject.id, updated)
       refreshProjects()
+      // Persist images to IndexedDB (async, non-blocking)
+      saveCarouselImages(currentProject.id, newSlides)
     }
   }
 
@@ -346,7 +401,39 @@ export default function CarouselPreview() {
                   className="px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white w-32 focus:outline-none focus:border-violet-400"
                 />
               </div>
+
+              {/* Templates toggle */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><LayoutGrid size={11} /> Layout</p>
+                <button
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all', showTemplates ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300' : 'border-gray-200 dark:border-gray-700 text-gray-500')}
+                >
+                  <LayoutGrid size={12} />
+                  Templates
+                </button>
+              </div>
             </div>
+
+            {/* Template selector panel */}
+            {showTemplates && (
+              <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 mb-4 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Gradientes</p>
+                  <GradientPicker selected={customGradient} onSelect={g => setCustomGradient(g.id)} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Templates de Texto (aplique por slide abaixo)</p>
+                  <div className="flex flex-wrap gap-1">
+                    {TEMPLATES.map(t => (
+                      <span key={t.id} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-[10px] text-gray-600 dark:text-gray-400">
+                        {t.category === 'capa' ? '🎯' : t.category === 'cta' ? '🔥' : '📝'} {t.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Slides grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -365,6 +452,8 @@ export default function CarouselPreview() {
                       height={DISP_H}
                       titleFont={font.title}
                       subtitleFont={font.sub}
+                      template={slideTemplates[i]}
+                      customGradient={!slide.imageUrl ? GRADIENT_PRESETS.find(g => g.id === customGradient)?.css : undefined}
                     />
                     {generatingImg.has(i) && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 rounded-xl">
@@ -374,17 +463,50 @@ export default function CarouselPreview() {
                     )}
                   </div>
 
+                  {/* Background type */}
+                  <BackgroundTypeSelector
+                    value={slideBgTypes[i] || (slide.imageUrl ? 'photo' : 'gradient')}
+                    onChange={(type) => {
+                      setSlideBgTypes(prev => ({ ...prev, [i]: type }))
+                      if (type === 'gradient') removeImage(i)
+                      else if (type === 'ia') openPromptEdit(i)
+                    }}
+                  />
+
                   {/* Actions */}
                   <div className="flex gap-1" style={{ width: DISP_W }}>
-                    <button onClick={() => removeImage(i)} title="Cor" className={cn('flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all', !slide.imageUrl ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>🎨</button>
-                    <label className={cn('flex-1 py-1.5 rounded-lg text-xs font-semibold border text-center cursor-pointer transition-all', slide.imageUrl ? 'bg-green-50 dark:bg-green-900/20 border-green-400 text-green-700 dark:text-green-300' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>
-                      <Image size={12} className="inline mr-1" />Foto
-                      <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(i, e)} />
-                    </label>
-                    <button onClick={() => openPromptEdit(i)} disabled={generatingImg.has(i)} title="Gerar com IA" className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 transition-all disabled:opacity-40">
-                      <Wand2 size={12} className="inline mr-1" />IA
-                    </button>
+                    {(slideBgTypes[i] === 'photo' || slideBgTypes[i] === 'photo-text') && (
+                      <label className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 text-center cursor-pointer hover:border-violet-400 transition-all">
+                        <Image size={12} className="inline mr-1" />Upload Foto
+                        <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(i, e)} />
+                      </label>
+                    )}
+                    {slideBgTypes[i] === 'ia' && (
+                      <button onClick={() => openPromptEdit(i)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-amber-300 dark:border-amber-700 text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-40">
+                        <Wand2 size={12} className="inline mr-1" />Gerar IA (risco alcance)
+                      </button>
+                    )}
                   </div>
+
+                  {/* Template selector per slide */}
+                  {showTemplates && (
+                    <div className="flex flex-wrap gap-1" style={{ width: DISP_W }}>
+                      {TEMPLATES.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => setSlideTemplates(prev => ({ ...prev, [i]: t.id }))}
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[9px] font-medium border transition-all',
+                            slideTemplates[i] === t.id
+                              ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-600'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300'
+                          )}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex gap-1" style={{ width: DISP_W }}>
                     <button onClick={() => startEdit(i)} className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 transition-all">✎ Editar</button>
@@ -484,42 +606,20 @@ export default function CarouselPreview() {
         {/* LEGENDA TAB */}
         {tab === 'legenda' && caption && (
           <div className="px-6 py-6 max-w-2xl">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-bold text-gray-800 dark:text-white">Legenda Completa</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => copy(fullCaption, 'legenda')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 transition-all">
-                    {copied === 'legenda' ? <Check size={12} /> : <Copy size={12} />}
-                    {copied === 'legenda' ? 'Copiado!' : 'Copiar tudo'}
-                  </button>
-                  <button onClick={() => exportCaptionAsTxt(caption, currentProject?.name || 'carrossel')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-violet-400 transition-all">
-                    <Download size={12} /> .txt
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-5">
-                {[
-                  { label: 'Hook (1ª linha)', value: caption.hook, key: 'hook' },
-                  { label: 'Corpo', value: caption.body, key: 'body' },
-                  { label: 'CTA', value: caption.cta, key: 'cta' },
-                ].map(item => (
-                  <div key={item.key}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{item.label}</p>
-                      <button onClick={() => copy(item.value, item.key)} className="text-xs text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1">
-                        {copied === item.key ? <Check size={10} /> : <Copy size={10} />}
-                        {copied === item.key ? 'Copiado' : 'Copiar'}
-                      </button>
-                    </div>
-                    <pre className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap font-sans bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">{item.value}</pre>
-                  </div>
-                ))}
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Hashtags</p>
-                  <p className="text-sm text-violet-600 dark:text-violet-400 leading-relaxed bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">{caption.hashtags}</p>
-                </div>
-              </div>
-            </div>
+            <CaptionEditor
+              caption={caption}
+              onChange={(updated: Caption) => {
+                if (currentProject && currentCarousel) {
+                  const newCarousel = { ...currentCarousel, caption: updated }
+                  setCurrentCarousel(newCarousel)
+                  updateProjectCarousel(currentProject.id, newCarousel)
+                  refreshProjects()
+                }
+              }}
+              projectName={currentProject?.name || 'carrossel'}
+              niche={currentCarousel?.strategy?.niche || ''}
+              theme={currentProject?.theme || ''}
+            />
           </div>
         )}
 

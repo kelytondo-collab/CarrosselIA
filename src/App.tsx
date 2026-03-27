@@ -10,10 +10,39 @@ import CarouselPreview from './components/preview/CarouselPreview'
 import ProfileManager from './components/profile/ProfileManager'
 import Settings from './components/settings/Settings'
 import GeneratingOverlay from './components/GeneratingOverlay'
+import Onboarding from './components/onboarding/Onboarding'
+import PostEditor from './components/post/PostEditor'
+import PostPreview from './components/post/PostPreview'
+import StoriesEditor from './components/stories/StoriesEditor'
+import StoriesPreview from './components/stories/StoriesPreview'
+import QuoteVideoEditor from './components/video/QuoteVideoEditor'
+import CarouselReelEditor from './components/video/CarouselReelEditor'
+import { getDefaultProfile } from './services/storageService'
 
 function AppContent() {
-  const { view, isDark } = useApp()
+  const { view, isDark, apiKey, refreshProfiles } = useApp()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(!getDefaultProfile())
+
+  const handleOnboardingComplete = () => {
+    refreshProfiles()
+    setShowOnboarding(false)
+  }
+
+  if (showOnboarding) {
+    return (
+      <div className={isDark ? 'dark' : ''}>
+        <Onboarding onComplete={handleOnboardingComplete} apiKey={apiKey} />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: 'dark:bg-gray-800 dark:text-white',
+            style: { borderRadius: '12px', fontSize: '13px' },
+          }}
+        />
+      </div>
+    )
+  }
 
   const PAGE: Record<string, React.ReactElement> = {
     dashboard: <Dashboard />,
@@ -21,6 +50,12 @@ function AppContent() {
     preview: <CarouselPreview />,
     profiles: <ProfileManager />,
     settings: <Settings />,
+    'post-editor': <PostEditor />,
+    'post-preview': <PostPreview />,
+    'stories-editor': <StoriesEditor />,
+    'stories-preview': <StoriesPreview />,
+    'quote-video': <QuoteVideoEditor />,
+    'carousel-reel': <CarouselReelEditor />,
   }
 
   return (
@@ -48,7 +83,7 @@ function AppContent() {
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">
               <Menu size={20} />
             </button>
-            <span className="ml-3 font-bold text-gray-900 dark:text-white text-sm">Carrossel IA</span>
+            <span className="ml-3 font-bold text-gray-900 dark:text-white text-sm">Post Ativo AI</span>
           </div>
 
           {/* Page content */}
