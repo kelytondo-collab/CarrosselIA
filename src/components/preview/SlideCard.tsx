@@ -15,33 +15,35 @@ interface Props {
   subtitleFont?: string
   template?: SlideTemplate
   customGradient?: string // CSS gradient override
+  fontScale?: number // 0.7–1.5, default 1.0
 }
 
 const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
-  { slide, palette, brand, width, height, titleFont = 'Inter, sans-serif', subtitleFont = 'Inter, sans-serif', template, customGradient, index },
+  { slide, palette, brand, width, height, titleFont = 'Inter, sans-serif', subtitleFont = 'Inter, sans-serif', template, customGradient, index, fontScale = 1.0 },
   ref
 ) {
   const tmpl: TemplateConfig = template ? getTemplateById(template) : getTemplateById('default')
 
-  // Title size based on template + text length
+  // Title size based on template + text length + user scale
   const titleLen = slide.headline.length
   const baseTitleSize = tmpl.titleSize === 'xl' ? (width < 400 ? 28 : 38)
     : tmpl.titleSize === 'lg' ? (width < 400 ? 24 : 32)
     : tmpl.titleSize === 'sm' ? (width < 400 ? 16 : 20)
     : (width < 400 ? 20 : 26) // md
-  const titleSize = titleLen > 50 ? baseTitleSize * 0.75 : titleLen > 30 ? baseTitleSize * 0.88 : baseTitleSize
-  const subSize = width < 400 ? 13 : 15
+  const titleSize = (titleLen > 50 ? baseTitleSize * 0.75 : titleLen > 30 ? baseTitleSize * 0.88 : baseTitleSize) * fontScale
+  const subSize = (width < 400 ? 13 : 15) * fontScale
 
-  const bgColor = (palette as any).background || palette.secondary
-  const txtColor = (palette as any).text || palette.accent
+  const bgColor = palette.background || palette.secondary
+  const txtColor = palette.text || palette.accent
 
   // Background: gradient-first (no image = gradient)
+  // When image present, overlay tints toward palette background color
   const background = slide.imageUrl
-    ? `linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.6)), url(${slide.imageUrl}) center/cover no-repeat`
+    ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}40 35%, ${bgColor}dd 100%), url(${slide.imageUrl}) center/cover no-repeat`
     : customGradient || `linear-gradient(145deg, ${bgColor} 0%, ${palette.secondary} 100%)`
 
-  const textColor = slide.imageUrl ? '#ffffff' : txtColor
-  const subColor = slide.imageUrl ? 'rgba(255,255,255,0.8)' : `${txtColor}cc`
+  const textColor = slide.imageUrl ? palette.primary : txtColor
+  const subColor = slide.imageUrl ? `${palette.primary}dd` : `${txtColor}cc`
   const accentColor = palette.primary
   const PAD = Math.round(width * 0.09)
 
@@ -62,7 +64,7 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
         padding: PAD,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
+        justifyContent: slide.imageUrl ? 'flex-end' : 'space-between',
         boxSizing: 'border-box',
         overflow: 'hidden',
         position: 'relative',

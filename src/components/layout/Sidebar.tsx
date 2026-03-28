@@ -1,8 +1,7 @@
 import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
+import type { View } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
-
-type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel'
 
 const NAV_MAIN = [
   { id: 'dashboard' as View, label: 'Projetos', icon: LayoutDashboard },
@@ -41,7 +40,7 @@ export default function Sidebar({ onClose }: Props) {
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center">
             <Sparkles size={16} className="text-white" />
           </div>
-          <span className="font-bold text-gray-900 dark:text-white text-sm">Post Ativo AI</span>
+          <span className="font-bold text-gray-900 dark:text-white text-sm">Carrossel</span>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 lg:hidden">

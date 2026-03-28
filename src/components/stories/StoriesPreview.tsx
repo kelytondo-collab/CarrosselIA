@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 import { ArrowLeft, Download, FileArchive, Wand2, Palette, Type, Image } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
+import type { View } from '../../contexts/AppContext'
 import type { ColorPalette, StorySlide, Caption } from '../../types'
 import { exportSlideAsImage, exportAllSlidesAsZip } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
@@ -14,21 +15,56 @@ function buildPalettes(): { id: string; label: string; p: ColorPalette }[] {
   const profile = getDefaultProfile()
   const bk = profile?.brandKit
   const base: { id: string; label: string; p: ColorPalette }[] = []
-  if (bk) base.push({ id: 'brand', label: profile?.name || 'Sua Marca', p: bk.colors })
+  if (bk) {
+    base.push({ id: 'brand', label: profile?.name || 'Sua Marca', p: bk.colors })
+  } else if (profile?.color_palette) {
+    const cp = profile.color_palette
+    base.push({
+      id: 'brand',
+      label: profile.name || 'Sua Marca',
+      p: {
+        primary: cp.primary,
+        secondary: cp.secondary || '#0f172a',
+        accent: cp.accent || '#f8fafc',
+        background: cp.background || cp.secondary || '#0f172a',
+        text: cp.text || '#ffffff',
+      },
+    })
+  }
   return [
     ...base,
+    { id: 'black', label: 'Preto', p: { primary: '#ffffff', secondary: '#000000', accent: '#ffffff', background: '#000000', text: '#ffffff' } },
+    { id: 'white', label: 'Branco', p: { primary: '#000000', secondary: '#ffffff', accent: '#000000', background: '#ffffff', text: '#000000' } },
     { id: 'violet', label: 'Violeta', p: { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc', background: '#0f0a1a', text: '#ffffff' } },
-    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#fafafa' } },
+    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#d97706' } },
     { id: 'rose', label: 'Rosa', p: { primary: '#ec4899', secondary: '#1f001a', accent: '#fff', background: '#1f001a', text: '#ffffff' } },
+    { id: 'cyan', label: 'Ciano', p: { primary: '#06b6d4', secondary: '#0c1a2e', accent: '#f0f9ff', background: '#0c1a2e', text: '#f0f9ff' } },
+    { id: 'emerald', label: 'Verde', p: { primary: '#10b981', secondary: '#052e16', accent: '#f0fdf4', background: '#052e16', text: '#f0fdf4' } },
   ]
 }
+
+const FONT_OPTIONS: { id: string; label: string; title: string; sub: string }[] = [
+  { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' },
+  { id: 'playfair', label: 'Elegante', title: '"Playfair Display", serif', sub: 'Inter, sans-serif' },
+  { id: 'georgia', label: 'Clássica', title: 'Georgia, serif', sub: 'Georgia, serif' },
+  { id: 'helvetica', label: 'Bold', title: '"Helvetica Neue", Arial, sans-serif', sub: 'Arial, sans-serif' },
+]
 
 function buildFonts() {
   const profile = getDefaultProfile()
   const bk = profile?.brandKit
   const base: { id: string; label: string; title: string; sub: string }[] = []
   if (bk) base.push({ id: 'brand', label: 'Sua Marca', title: `"${bk.fonts.title.family}", ${bk.fonts.title.category}`, sub: `"${bk.fonts.body.family}", ${bk.fonts.body.category}` })
-  return [...base, { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' }, { id: 'playfair', label: 'Elegante', title: '"Playfair Display", serif', sub: 'Inter, sans-serif' }]
+  return [...base, ...FONT_OPTIONS]
+}
+
+function getProfileFont() {
+  const profile = getDefaultProfile()
+  if (profile?.preferred_font) {
+    return FONT_OPTIONS.find(f => f.id === profile.preferred_font) || FONT_OPTIONS[0]
+  }
+  if (profile?.brandKit) return buildFonts()[0]
+  return FONT_OPTIONS[0]
 }
 
 // Display: 216x384 (x5 = 1080x1920)
@@ -44,11 +80,13 @@ export default function StoriesPreview() {
   const PALETTES = buildPalettes()
   const FONTS = buildFonts()
 
-  const [palette, setPalette] = useState(PALETTES[0])
-  const [font, setFont] = useState(FONTS[0])
+  const brandPal = PALETTES.find(p => p.id === 'brand') || PALETTES[0]
+  const [palette, setPalette] = useState(brandPal)
+  const [font, setFont] = useState(getProfileFont())
   const [slides, setSlides] = useState<StorySlide[]>(storiesData?.slides || [])
   const [generatingImg, setGeneratingImg] = useState<Set<number>>(new Set())
   const [dlAllLoading, setDlAllLoading] = useState(false)
+  const [fontScale, setFontScale] = useState(1.0)
 
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -57,7 +95,7 @@ export default function StoriesPreview() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-4">Nenhum story carregado</p>
-          <button onClick={() => setView('stories-editor' as any)} className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold">Criar stories</button>
+          <button onClick={() => setView('stories-editor' as View)} className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold">Criar stories</button>
         </div>
       </div>
     )
@@ -83,15 +121,24 @@ export default function StoriesPreview() {
     reader.readAsDataURL(file)
   }
 
-  const genImage = async (idx: number) => {
+  const genImage = async (idx: number, useExpertPhoto: boolean) => {
     if (!apiKey) { toast.error('Configure chave Gemini'); return }
     setGeneratingImg(prev => new Set([...prev, idx]))
-    const toastId = toast.loading(`Gerando imagem story ${idx + 1}...`)
+    const label = useExpertPhoto ? 'foto expert' : 'fundo'
+    const toastId = toast.loading(`Gerando ${label} story ${idx + 1}...`)
     try {
-      const url = await generateSlideImage(slides[idx].visualPrompt, '9:16', expertPhotoBase64)
+      const slide = slides[idx]
+      let prompt: string
+      if (useExpertPhoto) {
+        prompt = slide.visualPrompt || `Fotografia profissional de especialista em ${profile?.niche || 'negócios'}, formato vertical stories`
+      } else {
+        const contentContext = `Fundo abstrato/metafórico para story sobre: "${slide.headline}". ${slide.body ? `Contexto: ${slide.body.slice(0, 100)}` : ''}`
+        prompt = `${slide.visualPrompt || contentContext}. IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto escrito na imagem, SEM logos.`
+      }
+      const url = await generateSlideImage(prompt, '9:16', useExpertPhoto ? expertPhotoBase64 : undefined)
       const next = [...slides]; next[idx] = { ...next[idx], imageUrl: url }
       saveSlides(next)
-      toast.success('Imagem gerada!', { id: toastId })
+      toast.success(`${useExpertPhoto ? 'Foto expert' : 'Fundo'} gerado!`, { id: toastId })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro', { id: toastId })
     } finally {
@@ -146,7 +193,7 @@ export default function StoriesPreview() {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Cor</p>
             <div className="flex gap-2">
               {PALETTES.map(p => (
-                <button key={p.id} onClick={() => setPalette(p)} title={p.label} style={{ background: p.p.primary }} className={cn('w-6 h-6 rounded-full transition-all', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105')} />
+                <button key={p.id} onClick={() => setPalette(p)} title={p.label} style={{ background: `linear-gradient(135deg, ${p.p.background || p.p.secondary} 50%, ${p.p.primary} 50%)` }} className={cn('w-7 h-7 rounded-full transition-all border', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105', p.p.background === '#ffffff' ? 'border-gray-300' : 'border-transparent')} />
               ))}
             </div>
           </div>
@@ -158,6 +205,13 @@ export default function StoriesPreview() {
               ))}
             </div>
           </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Tamanho</p>
+            <div className="flex items-center gap-2">
+              <input type="range" min="0.7" max="1.8" step="0.1" value={fontScale} onChange={e => setFontScale(parseFloat(e.target.value))} className="w-20 h-1.5 accent-violet-600" />
+              <span className="text-xs text-gray-500 font-mono w-8">{Math.round(fontScale * 100)}%</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -166,10 +220,10 @@ export default function StoriesPreview() {
         <div className="flex gap-6 overflow-x-auto pb-4">
           {slides.map((slide, i) => {
             const bg = slide.imageUrl
-              ? `linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.5)), url(${slide.imageUrl}) center/cover no-repeat`
+              ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}30 30%, ${bgColor}dd 100%), url(${slide.imageUrl}) center/cover no-repeat`
               : `linear-gradient(180deg, ${bgColor} 0%, ${palette.p.secondary} 100%)`
-            const color = slide.imageUrl ? '#fff' : txtColor
-            const subColor = slide.imageUrl ? 'rgba(255,255,255,0.85)' : `${txtColor}cc`
+            const color = slide.imageUrl ? palette.p.primary : txtColor
+            const subColor = slide.imageUrl ? `${palette.p.primary}dd` : `${txtColor}cc`
 
             return (
               <div key={slide.id} className="flex flex-col gap-2 shrink-0">
@@ -179,7 +233,7 @@ export default function StoriesPreview() {
                   style={{
                     width: DISP_W, height: DISP_H, background: bg,
                     padding: 20, paddingTop: 50, paddingBottom: 60,
-                    display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                    display: 'flex', flexDirection: 'column', justifyContent: slide.imageUrl ? 'flex-end' : 'center',
                     boxSizing: 'border-box', overflow: 'hidden', position: 'relative',
                     fontFamily: font.sub, borderRadius: 16,
                   }}
@@ -189,11 +243,11 @@ export default function StoriesPreview() {
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: 'rgba(0,0,0,0.1)' }} />
 
                   {/* Content */}
-                  <h2 style={{ fontSize: 18, fontWeight: 900, color, lineHeight: 1.2, margin: 0, fontFamily: font.title, letterSpacing: '-0.01em' }}>
+                  <h2 style={{ fontSize: 18 * fontScale, fontWeight: 900, color, lineHeight: 1.2, margin: 0, fontFamily: font.title, letterSpacing: '-0.01em' }}>
                     {slide.headline}
                   </h2>
                   <div style={{ height: 8 }} />
-                  <p style={{ fontSize: 11, color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>
+                  <p style={{ fontSize: 11 * fontScale, color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>
                     {slide.body}
                   </p>
 
@@ -230,18 +284,18 @@ export default function StoriesPreview() {
                   {/* Safe zone bottom */}
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 55, background: 'rgba(0,0,0,0.1)' }} />
 
-                  {/* Type badge */}
-                  <div style={{ position: 'absolute', top: 14, right: 12 }}>
-                    <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: 4, fontWeight: 700, textTransform: 'uppercase' }}>
-                      {slide.type === 'question' ? 'Caixinha' : slide.type === 'poll' ? 'Enquete' : 'Conteúdo'}
-                    </span>
-                  </div>
-
                   {generatingImg.has(i) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70" style={{ borderRadius: 16 }}>
                       <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     </div>
                   )}
+                </div>
+
+                {/* Type badge (outside card - not exported) */}
+                <div className="text-center">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                    {slide.type === 'question' ? 'Caixinha' : slide.type === 'poll' ? 'Enquete' : `Story ${i + 1}`}
+                  </span>
                 </div>
 
                 {/* Actions */}
@@ -251,8 +305,11 @@ export default function StoriesPreview() {
                     <Image size={10} className="inline mr-0.5" />Foto
                     <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(i, e)} />
                   </label>
-                  <button onClick={() => genImage(i)} disabled={generatingImg.has(i)} className="flex-1 py-1 rounded-lg text-[10px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 disabled:opacity-40">
-                    <Wand2 size={10} className="inline mr-0.5" />IA
+                  <button onClick={() => genImage(i, true)} disabled={generatingImg.has(i)} className="flex-1 py-1 rounded-lg text-[10px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 disabled:opacity-40" title="Foto com seu rosto">
+                    <Wand2 size={10} className="inline mr-0.5" />Expert
+                  </button>
+                  <button onClick={() => genImage(i, false)} disabled={generatingImg.has(i)} className="flex-1 py-1 rounded-lg text-[10px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 disabled:opacity-40" title="Fundo abstrato sem rosto">
+                    <Wand2 size={10} className="inline mr-0.5" />Fundo
                   </button>
                   <button onClick={() => dlSlide(i)} className="px-2 py-1 rounded-lg text-[10px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-500">
                     <Download size={10} />

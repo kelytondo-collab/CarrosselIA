@@ -475,8 +475,9 @@ Requisitos técnicos:
 - Fotografia realista, alta qualidade, editorial
 - Iluminação dramática e emocional
 - Formato: ${formatDesc}
-- SEM texto, marcas d'água ou logos na imagem
-- O rosto da pessoa deve ser claramente reconhecível e idêntico à foto original`
+- O rosto da pessoa deve ser claramente reconhecível e idêntico à foto original
+
+REGRA ABSOLUTA: A imagem NÃO PODE conter NENHUMA letra, palavra, frase, número ou texto de qualquer tipo. ZERO texto. ZERO letras. Nem desfocadas. Apenas fotografia pura.`
           }
         ]
       }],
@@ -491,12 +492,19 @@ Requisitos técnicos:
       contents: [{
         role: 'user',
         parts: [{
-          text: `${visualPrompt}
+          text: `Gere uma imagem baseada nesta descrição visual:
+${visualPrompt}
 
 Estilo: Fotografia cinematográfica profissional, emocional, alta qualidade.
 Formato: ${formatDesc}.
-SEM texto, marcas d'água ou logos na imagem.
-IMPORTANTE: A imagem deve representar fielmente o nicho e o público descrito no prompt. Se o nicho for saúde, estética, bem-estar ou beleza, a imagem deve mostrar mulheres em contexto real do nicho — NUNCA homens de terno ou ambiente corporativo genérico.`
+
+REGRA ABSOLUTA — PROIBIDO TEXTO NA IMAGEM:
+- A imagem NÃO PODE conter NENHUMA letra, palavra, frase, número, símbolo tipográfico ou caractere escrito.
+- ZERO texto. ZERO letras. ZERO palavras. Nem mesmo parcialmente visíveis ou desfocadas.
+- Se a descrição mencionar frases ou conteúdo textual, IGNORE o texto e gere APENAS o visual/cenário/atmosfera.
+- NÃO gere marcas d'água, logos, títulos, legendas ou qualquer forma de escrita.
+
+A imagem será usada como FUNDO para texto sobreposto depois — por isso precisa ser LIMPA, sem nenhum texto.`
         }]
       }],
       generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
@@ -614,7 +622,8 @@ export const generateFromReference = async (
   theme: string,
   niche: string,
   tone: Tone,
-  voiceBlueprint?: string
+  voiceBlueprint?: string,
+  userContent?: string
 ): Promise<PostData> => {
   if (!genAI) throw new Error('Configure sua chave Gemini')
 
@@ -622,6 +631,10 @@ export const generateFromReference = async (
     model: 'gemini-2.5-flash',
     systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
   })
+
+  const contentBlock = userContent
+    ? `\nIMPORTANTE: O usuario forneceu SEU PROPRIO conteudo. Use EXATAMENTE este texto como base para headline e subtitle. NAO reescreva, apenas formate para caber no post:\n"""\n${userContent}\n"""\n`
+    : `\nTema: ${theme}\n`
 
   const prompt = `
 Crie um POST ESTÁTICO Instagram (1080x1080) INSPIRADO nesta análise de referência:
@@ -631,12 +644,11 @@ Crie um POST ESTÁTICO Instagram (1080x1080) INSPIRADO nesta análise de referê
 - Sugestão: ${analysis.suggestion}
 
 MAS com a identidade do especialista (nicho: ${niche}, tom: ${tone}).
-Tema: ${theme}
-
+${contentBlock}
 Retorne APENAS JSON:
 {
-  "headline": "título impactante até 50 chars",
-  "subtitle": "subtítulo até 100 chars",
+  "headline": "título impactante até 50 chars${userContent ? ' (extraido do conteudo do usuario)' : ''}",
+  "subtitle": "subtítulo até 100 chars${userContent ? ' (extraido do conteudo do usuario)' : ''}",
   "caption": {
     "hook": "primeira linha",
     "body": "corpo com emojis",
@@ -654,6 +666,163 @@ Retorne APENAS JSON:
   const parsed = JSON.parse(jsonText)
 
   return { ...parsed, layout: 'minimal', generatedAt: new Date().toISOString() }
+}
+
+// ── Clone Visual (Image-to-Image) ──
+
+export const clonePostVisual = async (
+  referenceBase64: string,
+  userPhotoBase64: string | undefined,
+  userText: string,
+  niche: string,
+  tone: Tone,
+  voiceBlueprint?: string
+): Promise<PostData> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini')
+  if (!userPhotoBase64) throw new Error('Envie sua foto para clonar')
+
+  const imageModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' })
+  const refMime = getMimeType(referenceBase64)
+  const refData = stripDataUrl(referenceBase64)
+  const userMime = getMimeType(userPhotoBase64)
+  const userData = stripDataUrl(userPhotoBase64)
+
+  // CLONE: cria foto profissional da pessoa (imagem 2) no MESMO estilo visual da referência (imagem 1)
+  let clonedImageUrl: string
+  try {
+    const imageResult = await imageModel.generateContent({
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: refMime, data: refData } },
+          { inlineData: { mimeType: userMime, data: userData } },
+          {
+            text: `CONTEXTO IMPORTANTE: A IMAGEM 1 é um POST DE INSTAGRAM. Ela contém uma FOTOGRAFIA DE FUNDO com TEXTOS/FRASES sobrepostos por cima. Você DEVE ignorar completamente qualquer texto, letra, número, palavra ou tipografia que apareça na IMAGEM 1 — eles são overlays do app e NÃO fazem parte da foto.
+
+A IMAGEM 2 mostra a pessoa que deve aparecer no resultado final.
+
+TAREFA: Gere uma FOTOGRAFIA PURA (100% foto, ZERO texto) que clone os elementos FOTOGRÁFICOS da IMAGEM 1:
+• MESMO cenário/fundo por trás (engrenagens, paisagem, studio, etc)
+• MESMAS cores, paleta, temperatura de cor da FOTO
+• MESMA iluminação, sombras, brilhos, efeitos de luz
+• MESMA composição, enquadramento, ângulo de câmera
+• MESMA pose corporal, posição na imagem
+• MESMO estilo de roupa/acessórios
+• MESMOS efeitos visuais (desfoque, arcos dourados, bokeh, etc)
+
+A ÚNICA mudança: a pessoa no resultado tem a aparência da IMAGEM 2 (rosto, cabelo, tom de pele).
+
+REGRAS ABSOLUTAS:
+1. A imagem gerada NÃO PODE conter NENHUM texto, frase, palavra, letra, número ou tipografia — NEM MESMO os textos que aparecem na IMAGEM 1. IGNORE-OS COMPLETAMENTE.
+2. Gere APENAS fotografia pura — como se os textos do post original nunca existissem.
+3. A imagem final deve parecer que a FOTO ORIGINAL foi feita com a pessoa da IMAGEM 2 desde o início.
+
+Formato: quadrado 1080x1080.
+Qualidade: fotografia profissional cinematográfica, resolução máxima.`
+          }
+        ]
+      }],
+      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
+    } as any)
+
+    clonedImageUrl = extractImage(imageResult)
+  } catch (imgErr: unknown) {
+    const msg = imgErr instanceof Error ? imgErr.message : String(imgErr)
+    console.error('[CLONE] Erro ao gerar imagem:', msg)
+    throw new Error(`Erro ao clonar: ${msg}`)
+  }
+
+  // Also analyze colors from the reference using text model
+  let style: Record<string, string> = { primaryHex: '#d4a574', backgroundHex: '#0f0f0f', textHex: '#ffffff', accentHex: '#d4a574', fontStyle: 'bold sans-serif' }
+  try {
+    const textModel0 = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const analyzeResult = await textModel0.generateContent({
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: refMime, data: refData } },
+          { text: `Analise as cores e fontes deste post. Retorne APENAS JSON: {"primaryHex":"#hex destaque","backgroundHex":"#hex fundo","textHex":"#hex texto","accentHex":"#hex secundaria","fontStyle":"bold sans-serif ou serif ou script"}` }
+        ]
+      }]
+    })
+    const raw = analyzeResult.response.text().replace(/```json/gi, '').replace(/```/g, '').trim()
+    style = { ...style, ...JSON.parse(raw) }
+  } catch { /* use defaults */ }
+
+  // Step 2: Split user text — headline = first line, subtitle = ALL the rest (card auto-scales font)
+  const lines = userText.split('\n').filter(l => l.trim())
+  // Headline: first line (or first sentence up to 60 chars)
+  let headline = lines[0] || userText
+  if (headline.length > 60) {
+    const cut = headline.lastIndexOf(' ', 60)
+    headline = headline.slice(0, cut > 20 ? cut : 60)
+  }
+  // Subtitle: EVERYTHING else — the card will auto-scale the font to fit
+  const subtitle = lines.length > 1
+    ? lines.slice(1).join('\n')
+    : userText.slice(headline.length).trim()
+  // Everything that didn't fit on the card goes to caption body
+  const overflowText = userText.replace(headline, '').replace(subtitle, '').trim()
+
+  // Generate caption that includes the overflow text
+  const textModel = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
+  })
+
+  const captionPrompt = `
+Gere a legenda (caption) para um post Instagram.
+O CARD mostra: "${headline}" + "${subtitle}"
+O texto COMPLETO do especialista é: "${userText.slice(0, 500)}"
+
+A legenda deve:
+1. Usar como HOOK uma frase impactante baseada no tema
+2. No BODY incluir o conteudo completo do especialista (o que nao coube no card)
+3. Fechar com CTA e hashtags
+
+Retorne APENAS JSON:
+{
+  "hook": "primeira linha impactante",
+  "body": "corpo com o conteudo completo + emojis + quebras de linha",
+  "cta": "chamada para ação",
+  "hashtags": "#h1 #h2 ... (20-30)"
+}`
+
+  let caption = { hook: headline, body: overflowText || subtitle, cta: '', hashtags: '' }
+  try {
+    const captionResult = await textModel.generateContent(captionPrompt)
+    const captionText = captionResult.response.text().trim()
+    const jsonText = captionText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+    const parsed = JSON.parse(jsonText)
+    caption = { hook: parsed.hook || headline, body: parsed.body || subtitle, cta: parsed.cta || '', hashtags: parsed.hashtags || '' }
+  } catch { /* use defaults */ }
+
+  // Build palette from extracted colors
+  const clonePalette = {
+    primary: style.primaryHex || '#8b5cf6',
+    secondary: style.backgroundHex || '#0f172a',
+    accent: style.accentHex || '#f8fafc',
+    background: style.backgroundHex || '#0f172a',
+    text: style.textHex || '#ffffff',
+  }
+
+  // Map font style to available font
+  const fs = (style.fontStyle || '').toLowerCase()
+  const cloneFont = fs.includes('serif') && !fs.includes('sans') ? 'serif'
+    : fs.includes('manuscri') || fs.includes('script') ? 'script'
+    : 'sans-serif'
+
+  return {
+    headline,
+    subtitle,
+    caption,
+    visualPrompt: '',
+    imageUrl: clonedImageUrl,
+    layout: 'minimal',
+    generatedAt: new Date().toISOString(),
+    clonePalette,
+    cloneFont,
+  }
 }
 
 // ── Stories ──

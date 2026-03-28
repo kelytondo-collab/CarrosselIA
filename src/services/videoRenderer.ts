@@ -16,18 +16,57 @@ export interface QuoteVideoConfig extends VideoConfig {
   fontFamily: string
   fontSize: number
   textColor: string
-  background: string // CSS gradient
+  background: string // CSS gradient (fallback)
+  backgroundImage?: string // data URL for static image (IA or uploaded)
+  backgroundVideoUrl?: string // blob URL for video background
   animationType: 'word-by-word' | 'line-by-line' | 'fade-in'
   expertPhoto?: string // base64 circle photo
   brand?: string
 }
 
 export interface CarouselReelConfig extends VideoConfig {
-  slides: { headline: string; subtitle: string; background: string }[]
+  slides: { headline: string; subtitle: string; background: string; backgroundImage?: string }[]
   fontFamily: string
   textColor: string
   transitionType: 'fade' | 'slide-left' | 'slide-up'
   secondsPerSlide: number
+  fontScale?: number
+}
+
+/** Preload an image from data URL or blob URL */
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Falha ao carregar imagem de fundo'))
+    img.src = src
+  })
+}
+
+/** Preload a video from blob URL */
+function loadVideo(src: string): Promise<HTMLVideoElement> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.src = src
+    video.muted = true
+    video.loop = true
+    video.playsInline = true
+    video.oncanplaythrough = () => resolve(video)
+    video.onerror = () => reject(new Error('Falha ao carregar video de fundo'))
+    video.load()
+  })
+}
+
+/** Draw image/video covering the canvas (object-fit: cover) */
+function drawMediaCover(ctx: CanvasRenderingContext2D, media: HTMLImageElement | HTMLVideoElement, w: number, h: number) {
+  const mw = media instanceof HTMLVideoElement ? media.videoWidth : media.naturalWidth || media.width
+  const mh = media instanceof HTMLVideoElement ? media.videoHeight : media.naturalHeight || media.height
+  if (mw === 0 || mh === 0) return
+  const ratio = Math.max(w / mw, h / mh)
+  const nw = mw * ratio
+  const nh = mh * ratio
+  ctx.drawImage(media, (w - nw) / 2, (h - nh) / 2, nw, nh)
 }
 
 /**
@@ -39,6 +78,18 @@ export async function renderQuoteVideo(config: QuoteVideoConfig): Promise<Blob> 
   canvas.width = config.width
   canvas.height = config.height
   const ctx = canvas.getContext('2d')!
+
+  // Preload background assets
+  let bgImage: HTMLImageElement | null = null
+  let bgVideo: HTMLVideoElement | null = null
+
+  if (config.backgroundVideoUrl) {
+    bgVideo = await loadVideo(config.backgroundVideoUrl)
+    bgVideo.currentTime = 0
+    await bgVideo.play()
+  } else if (config.backgroundImage) {
+    bgImage = await loadImage(config.backgroundImage)
+  }
 
   const stream = canvas.captureStream(config.fps)
   const recorder = new MediaRecorder(stream, {
@@ -58,6 +109,7 @@ export async function renderQuoteVideo(config: QuoteVideoConfig): Promise<Blob> 
 
   return new Promise((resolve) => {
     recorder.onstop = () => {
+      if (bgVideo) { bgVideo.pause(); bgVideo.src = '' }
       const blob = new Blob(chunks, { type: 'video/webm' })
       resolve(blob)
     }
@@ -74,8 +126,20 @@ export async function renderQuoteVideo(config: QuoteVideoConfig): Promise<Blob> 
 
       const progress = frame / totalFrames
 
-      // Draw background (gradient parsed as solid for canvas)
-      drawGradientBackground(ctx, config.width, config.height, config.background)
+      // Draw background
+      if (bgVideo) {
+        drawMediaCover(ctx, bgVideo, config.width, config.height)
+        // Dark overlay for text readability
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'
+        ctx.fillRect(0, 0, config.width, config.height)
+      } else if (bgImage) {
+        drawMediaCover(ctx, bgImage, config.width, config.height)
+        // Dark overlay for text readability
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'
+        ctx.fillRect(0, 0, config.width, config.height)
+      } else {
+        drawGradientBackground(ctx, config.width, config.height, config.background)
+      }
 
       // Calculate visible units based on progress
       const visibleCount = config.animationType === 'fade-in'
@@ -158,6 +222,11 @@ export async function renderCarouselReel(config: CarouselReelConfig): Promise<Bl
   canvas.height = config.height
   const ctx = canvas.getContext('2d')!
 
+  // Pre-load all slide background images
+  const slideImages: (HTMLImageElement | null)[] = await Promise.all(
+    config.slides.map(s => s.backgroundImage ? loadImage(s.backgroundImage).catch(() => null) : Promise.resolve(null))
+  )
+
   const stream = canvas.captureStream(config.fps)
   const recorder = new MediaRecorder(stream, {
     mimeType: 'video/webm;codecs=vp9',
@@ -190,8 +259,12 @@ export async function renderCarouselReel(config: CarouselReelConfig): Promise<Bl
 
       const slideIndex = Math.floor(frame / framesPerSlide)
       const frameInSlide = frame % framesPerSlide
-      const currentSlide = config.slides[Math.min(slideIndex, config.slides.length - 1)]
-      const nextSlide = config.slides[Math.min(slideIndex + 1, config.slides.length - 1)]
+      const curIdx = Math.min(slideIndex, config.slides.length - 1)
+      const nxtIdx = Math.min(slideIndex + 1, config.slides.length - 1)
+      const currentSlide = config.slides[curIdx]
+      const nextSlide = config.slides[nxtIdx]
+      const curImg = slideImages[curIdx]
+      const nxtImg = slideImages[nxtIdx]
 
       // Check if in transition zone
       const isTransitioning = frameInSlide >= framesPerSlide - transitionFrames && slideIndex < config.slides.length - 1
@@ -200,20 +273,18 @@ export async function renderCarouselReel(config: CarouselReelConfig): Promise<Bl
         : 0
 
       if (isTransitioning && config.transitionType === 'fade') {
-        // Draw current slide fading out
-        drawSlide(ctx, currentSlide, config, 1 - transitionProgress)
-        // Draw next slide fading in
-        drawSlide(ctx, nextSlide, config, transitionProgress)
+        drawSlide(ctx, currentSlide, config, 1 - transitionProgress, curImg)
+        drawSlide(ctx, nextSlide, config, transitionProgress, nxtImg)
       } else if (isTransitioning && config.transitionType === 'slide-left') {
         const offset = transitionProgress * config.width
         ctx.save()
         ctx.translate(-offset, 0)
-        drawSlide(ctx, currentSlide, config, 1)
+        drawSlide(ctx, currentSlide, config, 1, curImg)
         ctx.translate(config.width, 0)
-        drawSlide(ctx, nextSlide, config, 1)
+        drawSlide(ctx, nextSlide, config, 1, nxtImg)
         ctx.restore()
       } else {
-        drawSlide(ctx, currentSlide, config, 1)
+        drawSlide(ctx, currentSlide, config, 1, curImg)
       }
 
       frame++
@@ -239,18 +310,27 @@ function drawGradientBackground(ctx: CanvasRenderingContext2D, w: number, h: num
 
 function drawSlide(
   ctx: CanvasRenderingContext2D,
-  slide: { headline: string; subtitle: string; background: string },
+  slide: { headline: string; subtitle: string; background: string; backgroundImage?: string },
   config: CarouselReelConfig,
   opacity: number,
+  bgImg?: HTMLImageElement | null,
 ) {
   ctx.save()
   ctx.globalAlpha = opacity
 
-  drawGradientBackground(ctx, config.width, config.height, slide.background)
+  if (bgImg) {
+    drawMediaCover(ctx, bgImg, config.width, config.height)
+    // Dark overlay for text readability
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'
+    ctx.fillRect(0, 0, config.width, config.height)
+  } else {
+    drawGradientBackground(ctx, config.width, config.height, slide.background)
+  }
 
+  const scale = config.fontScale || 1.0
   const pad = config.width * 0.1
   const centerY = config.height / 2
-  const headlineSize = Math.min(48, config.width * 0.06)
+  const headlineSize = Math.min(48, config.width * 0.06) * scale
   const subtitleSize = headlineSize * 0.55
 
   // Headline

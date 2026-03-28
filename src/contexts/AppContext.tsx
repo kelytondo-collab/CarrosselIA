@@ -4,7 +4,7 @@ import type { Project, CarouselData, SpecialistProfile } from '../types'
 import { loadDarkMode, saveDarkMode, loadApiKey, getProjects, getProfiles, saveApiKey } from '../services/storageService'
 import { initGemini } from '../services/geminiService'
 
-type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel'
+export type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel'
 
 interface AppCtx {
   view: View
@@ -58,10 +58,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     refreshProjects()
     refreshProfiles()
+    // Load expert photo from default profile
+    const dp = getProfiles().find(p => p.is_default) || getProfiles()[0]
+    if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
   }, [])
 
   const refreshProjects = () => setProjects(getProjects())
-  const refreshProfiles = () => setProfiles(getProfiles())
+  const refreshProfiles = () => {
+    const updated = getProfiles()
+    setProfiles(updated)
+    // Keep expert photo in sync with default profile
+    const dp = updated.find(p => p.is_default) || updated[0]
+    if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
+  }
 
   const toggleDark = () => {
     const next = !isDark

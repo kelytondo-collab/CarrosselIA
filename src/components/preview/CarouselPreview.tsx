@@ -23,24 +23,42 @@ function buildPalettes(): { id: string; label: string; p: ColorPalette }[] {
   const brandKit = defaultProfile?.brandKit
   const base: { id: string; label: string; p: ColorPalette }[] = []
 
+  // Use brandKit if available, otherwise use profile color_palette
   if (brandKit) {
+    base.push({ id: 'brand', label: defaultProfile?.name || 'Sua Marca', p: brandKit.colors })
+  } else if (defaultProfile?.color_palette) {
+    const cp = defaultProfile.color_palette
     base.push({
       id: 'brand',
-      label: defaultProfile?.name || 'Sua Marca',
-      p: brandKit.colors,
+      label: defaultProfile.name || 'Sua Marca',
+      p: {
+        primary: cp.primary,
+        secondary: cp.secondary || '#0f172a',
+        accent: cp.accent || '#f8fafc',
+        background: cp.background || cp.secondary || '#0f172a',
+        text: cp.text || '#ffffff',
+      },
     })
   }
 
   return [
     ...base,
+    { id: 'black', label: 'Preto', p: { primary: '#ffffff', secondary: '#000000', accent: '#ffffff', background: '#000000', text: '#ffffff' } },
+    { id: 'white', label: 'Branco', p: { primary: '#000000', secondary: '#ffffff', accent: '#000000', background: '#ffffff', text: '#000000' } },
     { id: 'violet', label: 'Violeta', p: { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc', background: '#0f0a1a', text: '#ffffff' } },
-    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#fafafa' } },
+    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#d97706' } },
     { id: 'rose', label: 'Rosa', p: { primary: '#ec4899', secondary: '#1f001a', accent: '#fff', background: '#1f001a', text: '#ffffff' } },
     { id: 'cyan', label: 'Ciano', p: { primary: '#06b6d4', secondary: '#0c1a2e', accent: '#f0f9ff', background: '#0c1a2e', text: '#f0f9ff' } },
     { id: 'emerald', label: 'Verde', p: { primary: '#10b981', secondary: '#052e16', accent: '#f0fdf4', background: '#052e16', text: '#f0fdf4' } },
-    { id: 'white', label: 'Branco', p: { primary: '#1e293b', secondary: '#f8fafc', accent: '#1e293b', background: '#f8fafc', text: '#1e293b' } },
   ]
 }
+
+const FONT_OPTIONS: { id: string; label: string; title: string; sub: string }[] = [
+  { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' },
+  { id: 'playfair', label: 'Elegante', title: '"Playfair Display", serif', sub: 'Inter, sans-serif' },
+  { id: 'georgia', label: 'Clássica', title: 'Georgia, serif', sub: 'Georgia, serif' },
+  { id: 'helvetica', label: 'Bold', title: '"Helvetica Neue", Arial, sans-serif', sub: 'Arial, sans-serif' },
+]
 
 function buildFonts(): { id: string; label: string; title: string; sub: string }[] {
   const defaultProfile = getDefaultProfile()
@@ -56,12 +74,16 @@ function buildFonts(): { id: string; label: string; title: string; sub: string }
     })
   }
 
-  return [
-    ...base,
-    { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' },
-    { id: 'georgia', label: 'Clássica', title: 'Georgia, serif', sub: 'Georgia, serif' },
-    { id: 'helvetica', label: 'Bold', title: '"Helvetica Neue", Arial, sans-serif', sub: 'Arial, sans-serif' },
-  ]
+  return [...base, ...FONT_OPTIONS]
+}
+
+function getProfileFont() {
+  const profile = getDefaultProfile()
+  if (profile?.preferred_font) {
+    return FONT_OPTIONS.find(f => f.id === profile.preferred_font) || FONT_OPTIONS[0]
+  }
+  if (profile?.brandKit) return buildFonts()[0]
+  return FONT_OPTIONS[0]
 }
 
 // Display sizes (4:5 ratio)
@@ -73,8 +95,9 @@ export default function CarouselPreview() {
   const [tab, setTab] = useState<Tab>('slides')
   const PALETTES = buildPalettes()
   const FONTS = buildFonts()
-  const [palette, setPalette] = useState(PALETTES[0])
-  const [font, setFont] = useState(FONTS[0])
+  const brandPal = PALETTES.find(p => p.id === 'brand') || PALETTES[0]
+  const [palette, setPalette] = useState(brandPal)
+  const [font, setFont] = useState(getProfileFont())
   const [brand, setBrand] = useState('')
   const [slides, setSlides] = useState<SlideData[]>(currentCarousel?.slides || [])
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
@@ -90,8 +113,9 @@ export default function CarouselPreview() {
   const [copied, setCopied] = useState('')
   const [slideTemplates, setSlideTemplates] = useState<Record<number, SlideTemplate>>({})
   const [slideBgTypes, setSlideBgTypes] = useState<Record<number, BackgroundType>>({})
-  const [customGradient, setCustomGradient] = useState(GRADIENT_PRESETS[0].id)
+  const [customGradient, setCustomGradient] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
+  const [fontScale, setFontScale] = useState(1.0)
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
 
   // Restore cached images on mount
@@ -207,24 +231,30 @@ export default function CarouselPreview() {
     setPromptEditIdx(idx)
   }
 
-  const genImage = async (idx: number, prompt?: string) => {
+  const genImage = async (idx: number, prompt?: string, useExpertPhoto: boolean = false) => {
     if (!apiKey) { toast.error('Configure sua chave Gemini nas Configurações'); return }
-    const finalPrompt = prompt ?? slides[idx].visualPrompt
+    let finalPrompt = prompt ?? slides[idx].visualPrompt
     // Save edited prompt to slide
     if (prompt && prompt !== slides[idx].visualPrompt) {
       const next = [...slides]
       next[idx] = { ...next[idx], visualPrompt: prompt }
       setSlides(next)
     }
+    // For background mode, add safe instructions
+    if (!useExpertPhoto && !prompt) {
+      const slide = slides[idx]
+      finalPrompt = `Fundo abstrato/metafórico para slide sobre: "${slide.headline}". ${finalPrompt || ''}. IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto, SEM logos.`
+    }
     setPromptEditIdx(null)
     setGeneratingImg(prev => new Set([...prev, idx]))
-    const toastId = toast.loading(`Gerando imagem do slide ${idx + 1}...`)
+    const label = useExpertPhoto ? 'foto expert' : 'fundo'
+    const toastId = toast.loading(`Gerando ${label} do slide ${idx + 1}...`)
     try {
-      const url = await generateSlideImage(finalPrompt, currentCarousel.format || '4:5', expertPhotoBase64)
+      const url = await generateSlideImage(finalPrompt, currentCarousel.format || '4:5', useExpertPhoto ? expertPhotoBase64 : undefined)
       const next = [...slides]
       next[idx] = { ...next[idx], imageUrl: url, imageError: undefined, visualPrompt: finalPrompt }
       saveSlides(next)
-      toast.success('Imagem gerada!', { id: toastId })
+      toast.success(`${useExpertPhoto ? 'Foto expert' : 'Fundo'} gerado!`, { id: toastId })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro'
       toast.error(msg, { id: toastId })
@@ -342,8 +372,31 @@ export default function CarouselPreview() {
                       key={p.id}
                       onClick={() => setPalette(p)}
                       title={p.label}
-                      style={{ background: p.p.primary }}
-                      className={cn('w-6 h-6 rounded-full transition-all', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105')}
+                      style={{ background: `linear-gradient(135deg, ${p.p.background || p.p.secondary} 50%, ${p.p.primary} 50%)` }}
+                      className={cn('w-7 h-7 rounded-full transition-all border', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105', p.p.background === '#ffffff' ? 'border-gray-300' : 'border-transparent')}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Gradient override */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Fundo</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setCustomGradient('')}
+                    title="Usar cor da paleta"
+                    className={cn('w-7 h-7 rounded-full transition-all border text-[8px] font-bold flex items-center justify-center', !customGradient ? 'ring-2 ring-offset-2 ring-violet-500 scale-110 border-violet-400 bg-gray-100 dark:bg-gray-700' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-400')}
+                  >
+                    ✕
+                  </button>
+                  {GRADIENT_PRESETS.map(g => (
+                    <button
+                      key={g.id}
+                      onClick={() => setCustomGradient(g.id)}
+                      title={g.label}
+                      style={{ background: g.css }}
+                      className={cn('w-7 h-7 rounded-full transition-all border', customGradient === g.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110 border-violet-400' : 'border-gray-300 dark:border-gray-600 hover:scale-105')}
                     />
                   ))}
                 </div>
@@ -402,6 +455,15 @@ export default function CarouselPreview() {
                 />
               </div>
 
+              {/* Font Scale */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Tamanho</p>
+                <div className="flex items-center gap-2">
+                  <input type="range" min="0.7" max="1.6" step="0.1" value={fontScale} onChange={e => setFontScale(parseFloat(e.target.value))} className="w-20 h-1.5 accent-violet-600" />
+                  <span className="text-xs text-gray-500 font-mono w-8">{Math.round(fontScale * 100)}%</span>
+                </div>
+              </div>
+
               {/* Templates toggle */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><LayoutGrid size={11} /> Layout</p>
@@ -453,7 +515,8 @@ export default function CarouselPreview() {
                       titleFont={font.title}
                       subtitleFont={font.sub}
                       template={slideTemplates[i]}
-                      customGradient={!slide.imageUrl ? GRADIENT_PRESETS.find(g => g.id === customGradient)?.css : undefined}
+                      customGradient={!slide.imageUrl && customGradient ? GRADIENT_PRESETS.find(g => g.id === customGradient)?.css : undefined}
+                      fontScale={fontScale}
                     />
                     {generatingImg.has(i) && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 rounded-xl">
@@ -482,9 +545,17 @@ export default function CarouselPreview() {
                       </label>
                     )}
                     {slideBgTypes[i] === 'ia' && (
-                      <button onClick={() => openPromptEdit(i)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-amber-300 dark:border-amber-700 text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-40">
-                        <Wand2 size={12} className="inline mr-1" />Gerar IA (risco alcance)
-                      </button>
+                      <>
+                        <button onClick={() => genImage(i, undefined, true)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border border-amber-300 dark:border-amber-700 text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-40" title="Foto com seu rosto">
+                          <Wand2 size={10} className="inline mr-0.5" />Foto Expert
+                        </button>
+                        <button onClick={() => genImage(i, undefined, false)} disabled={generatingImg.has(i)} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border border-amber-300 dark:border-amber-700 text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-40" title="Fundo abstrato sem rosto">
+                          <Wand2 size={10} className="inline mr-0.5" />Fundo IA
+                        </button>
+                        <button onClick={() => openPromptEdit(i)} disabled={generatingImg.has(i)} className="py-1.5 px-2 rounded-lg text-[10px] font-semibold border border-gray-300 dark:border-gray-700 text-gray-500 hover:border-violet-400 transition-all disabled:opacity-40" title="Editar prompt">
+                          ✎
+                        </button>
+                      </>
                     )}
                   </div>
 

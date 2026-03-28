@@ -38,6 +38,7 @@ export interface SpecialistProfile {
   is_default: boolean
   created_at: string
   voiceBlueprint?: string
+  preferred_font?: 'inter' | 'playfair' | 'georgia' | 'helvetica'
 }
 
 export interface ProjectInputs {
@@ -126,6 +127,8 @@ export interface PostData {
   layout: LayoutType
   seoKeywords?: string[]
   generatedAt?: string
+  clonePalette?: ColorPalette
+  cloneFont?: string
 }
 
 export interface PostInputs {

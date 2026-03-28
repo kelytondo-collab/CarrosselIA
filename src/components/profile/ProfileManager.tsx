@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Trash2, Check, User, Loader2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Plus, Trash2, Check, User, Loader2, Camera } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { SpecialistProfile, Tone, Platform, SlideCount, ColorPalette } from '../../types'
 import { saveProfile, deleteProfile } from '../../services/storageService'
@@ -191,11 +191,67 @@ export default function ProfileManager() {
                   </div>
                 </div>
               </div>
+              {/* Foto do Expert */}
               <div>
-                <label className={labelCls}>Cor primária</label>
-                <div className="flex items-center gap-3">
-                  <input type="color" value={editing.color_palette.primary} onChange={e => setEditing({ ...editing, color_palette: { ...editing.color_palette, primary: e.target.value } })} className="w-10 h-10 rounded-xl border border-gray-200 cursor-pointer" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{editing.color_palette.primary}</span>
+                <label className={labelCls}>Foto do Expert (usada na IA)</label>
+                <div className="flex items-center gap-4">
+                  {editing.photo_base64 ? (
+                    <img src={editing.photo_base64} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-violet-300" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <Camera size={20} className="text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <label className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-400 hover:border-violet-400 cursor-pointer transition-all">
+                      {editing.photo_base64 ? 'Trocar foto' : 'Enviar foto'}
+                      <input type="file" accept="image/*" className="hidden" onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        if (file.size > 1024 * 1024 * 2) { toast.error('Foto muito grande (max 2MB)'); return }
+                        const reader = new FileReader()
+                        reader.onload = ev => setEditing({ ...editing, photo_base64: ev.target?.result as string })
+                        reader.readAsDataURL(file)
+                      }} />
+                    </label>
+                    {editing.photo_base64 && (
+                      <button onClick={() => setEditing({ ...editing, photo_base64: undefined })} className="px-3 py-2 border border-red-200 dark:border-red-800 rounded-xl text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">Remover</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Paleta de cores completa */}
+              <div>
+                <label className={labelCls}>Paleta de cores</label>
+                <div className="grid grid-cols-5 gap-3">
+                  {([
+                    { key: 'primary' as const, label: 'Principal' },
+                    { key: 'secondary' as const, label: 'Secundária' },
+                    { key: 'accent' as const, label: 'Destaque' },
+                    { key: 'background' as const, label: 'Fundo' },
+                    { key: 'text' as const, label: 'Texto' },
+                  ]).map(c => (
+                    <div key={c.key} className="flex flex-col items-center gap-1">
+                      <input type="color" value={editing.color_palette[c.key]} onChange={e => setEditing({ ...editing, color_palette: { ...editing.color_palette, [c.key]: e.target.value } })} className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer" />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Fonte preferida</label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { id: 'inter' as const, label: 'Inter (Moderna)', sample: 'Inter, sans-serif' },
+                    { id: 'playfair' as const, label: 'Elegante (Serif)', sample: '"Playfair Display", serif' },
+                    { id: 'georgia' as const, label: 'Clássica', sample: 'Georgia, serif' },
+                    { id: 'helvetica' as const, label: 'Bold', sample: '"Helvetica Neue", Arial, sans-serif' },
+                  ]).map(f => (
+                    <button key={f.id} onClick={() => setEditing({ ...editing, preferred_font: f.id })} className={cn('px-3 py-2 rounded-xl text-xs font-medium border transition-all', editing.preferred_font === f.id ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300' : 'border-gray-200 dark:border-gray-700 text-gray-500')} style={{ fontFamily: f.sample }}>
+                      {f.label}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center gap-3 pt-1">

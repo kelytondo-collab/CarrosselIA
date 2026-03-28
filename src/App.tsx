@@ -83,7 +83,7 @@ function AppContent() {
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">
               <Menu size={20} />
             </button>
-            <span className="ml-3 font-bold text-gray-900 dark:text-white text-sm">Post Ativo AI</span>
+            <span className="ml-3 font-bold text-gray-900 dark:text-white text-sm">Carrossel</span>
           </div>
 
           {/* Page content */}

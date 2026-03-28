@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
-import { ArrowLeft, Download, Wand2, Copy, Check, Palette, Type, Image } from 'lucide-react'
+import { ArrowLeft, Download, Wand2, Copy, Check, Palette, Type, Image, RefreshCw, Pencil } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
+import type { View } from '../../contexts/AppContext'
 import type { ColorPalette, LayoutType, PostData, Caption } from '../../types'
 import { exportSlideAsImage } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
@@ -23,22 +24,56 @@ function buildPalettes(): { id: string; label: string; p: ColorPalette }[] {
   const profile = getDefaultProfile()
   const bk = profile?.brandKit
   const base: { id: string; label: string; p: ColorPalette }[] = []
-  if (bk) base.push({ id: 'brand', label: profile?.name || 'Sua Marca', p: bk.colors })
+  if (bk) {
+    base.push({ id: 'brand', label: profile?.name || 'Sua Marca', p: bk.colors })
+  } else if (profile?.color_palette) {
+    const cp = profile.color_palette
+    base.push({
+      id: 'brand',
+      label: profile.name || 'Sua Marca',
+      p: {
+        primary: cp.primary,
+        secondary: cp.secondary || '#0f172a',
+        accent: cp.accent || '#f8fafc',
+        background: cp.background || cp.secondary || '#0f172a',
+        text: cp.text || '#ffffff',
+      },
+    })
+  }
   return [
     ...base,
+    { id: 'black', label: 'Preto', p: { primary: '#ffffff', secondary: '#000000', accent: '#ffffff', background: '#000000', text: '#ffffff' } },
+    { id: 'white', label: 'Branco', p: { primary: '#000000', secondary: '#ffffff', accent: '#000000', background: '#ffffff', text: '#000000' } },
     { id: 'violet', label: 'Violeta', p: { primary: '#8b5cf6', secondary: '#0f172a', accent: '#f8fafc', background: '#0f0a1a', text: '#ffffff' } },
-    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#fafafa' } },
+    { id: 'gold', label: 'Ouro', p: { primary: '#d97706', secondary: '#050505', accent: '#fafafa', background: '#050505', text: '#d97706' } },
     { id: 'rose', label: 'Rosa', p: { primary: '#ec4899', secondary: '#1f001a', accent: '#fff', background: '#1f001a', text: '#ffffff' } },
-    { id: 'white', label: 'Branco', p: { primary: '#1e293b', secondary: '#f8fafc', accent: '#1e293b', background: '#f8fafc', text: '#1e293b' } },
+    { id: 'cyan', label: 'Ciano', p: { primary: '#06b6d4', secondary: '#0c1a2e', accent: '#f0f9ff', background: '#0c1a2e', text: '#f0f9ff' } },
+    { id: 'emerald', label: 'Verde', p: { primary: '#10b981', secondary: '#052e16', accent: '#f0fdf4', background: '#052e16', text: '#f0fdf4' } },
   ]
 }
+
+const FONT_OPTIONS: { id: string; label: string; title: string; sub: string }[] = [
+  { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' },
+  { id: 'playfair', label: 'Elegante', title: '"Playfair Display", serif', sub: 'Inter, sans-serif' },
+  { id: 'georgia', label: 'Clássica', title: 'Georgia, serif', sub: 'Georgia, serif' },
+  { id: 'helvetica', label: 'Bold', title: '"Helvetica Neue", Arial, sans-serif', sub: 'Arial, sans-serif' },
+]
 
 function buildFonts() {
   const profile = getDefaultProfile()
   const bk = profile?.brandKit
   const base: { id: string; label: string; title: string; sub: string }[] = []
   if (bk) base.push({ id: 'brand', label: 'Sua Marca', title: `"${bk.fonts.title.family}", ${bk.fonts.title.category}`, sub: `"${bk.fonts.body.family}", ${bk.fonts.body.category}` })
-  return [...base, { id: 'inter', label: 'Inter', title: 'Inter, sans-serif', sub: 'Inter, sans-serif' }, { id: 'playfair', label: 'Elegante', title: '"Playfair Display", serif', sub: 'Inter, sans-serif' }]
+  return [...base, ...FONT_OPTIONS]
+}
+
+function getProfileFont() {
+  const profile = getDefaultProfile()
+  if (profile?.preferred_font) {
+    return FONT_OPTIONS.find(f => f.id === profile.preferred_font) || FONT_OPTIONS[0]
+  }
+  if (profile?.brandKit) return buildFonts()[0]
+  return FONT_OPTIONS[0]
 }
 
 const SIZE = 360
@@ -52,14 +87,40 @@ export default function PostPreview() {
   const PALETTES = buildPalettes()
   const FONTS = buildFonts()
 
-  const [palette, setPalette] = useState(PALETTES[0])
-  const [font, setFont] = useState(FONTS[0])
+  // If clone provided palette, inject it as first option
+  const clonePal = postData?.clonePalette
+  const allPalettes = clonePal
+    ? [{ id: 'clone', label: 'Clone', p: clonePal }, ...PALETTES]
+    : PALETTES
+
+  // Initial font: clone > profile > first option
+  const getInitialFont = () => {
+    if (postData?.cloneFont) {
+      const cf = postData.cloneFont
+      if (cf === 'serif' || cf === 'script') {
+        const elegante = FONTS.find(f => f.id === 'playfair')
+        if (elegante) return elegante
+      }
+    }
+    return getProfileFont()
+  }
+
+  // Initial palette: clone > brand (from profile) > first option
+  const getInitialPalette = () => {
+    if (clonePal) return allPalettes[0] // clone palette
+    const brand = allPalettes.find(p => p.id === 'brand')
+    return brand || allPalettes[0]
+  }
+
+  const [palette, setPalette] = useState(getInitialPalette())
+  const [font, setFont] = useState(getInitialFont())
   const [post, setPost] = useState<PostData | null>(postData || null)
   const [layout, setLayout] = useState<LayoutType>(postData?.layout || 'minimal')
   const [generatingImg, setGeneratingImg] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [editingText, setEditingText] = useState(false)
   const [copied, setCopied] = useState('')
+  const [fontScale, setFontScale] = useState(1.0)
 
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -68,7 +129,7 @@ export default function PostPreview() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-4">Nenhum post carregado</p>
-          <button onClick={() => setView('post-editor' as any)} className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold">Criar post</button>
+          <button onClick={() => setView('post-editor' as View)} className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold">Criar post</button>
         </div>
       </div>
     )
@@ -90,14 +151,27 @@ export default function PostPreview() {
     reader.readAsDataURL(file)
   }
 
-  const genImage = async () => {
+  // Track latest post in ref to avoid stale closure
+  const postRef = useRef(post)
+  postRef.current = post
+
+  const genImage = async (useExpertPhoto: boolean) => {
     if (!apiKey) { toast.error('Configure chave Gemini'); return }
+    if (useExpertPhoto && !expertPhotoBase64) {
+      toast.error('Configure sua foto no Perfil primeiro (menu lateral > Perfis)')
+      return
+    }
     setGeneratingImg(true)
-    const toastId = toast.loading('Gerando imagem...')
+    const label = useExpertPhoto ? 'foto expert' : 'fundo'
+    const toastId = toast.loading(`Gerando ${label}...`)
     try {
-      const url = await generateSlideImage(post.visualPrompt, '1:1', expertPhotoBase64)
-      savePost({ ...post, imageUrl: url })
-      toast.success('Imagem gerada!', { id: toastId })
+      const current = postRef.current!
+      const prompt = useExpertPhoto
+        ? (current.visualPrompt || `Fotografia profissional de especialista em ${profile?.niche || 'negócios'}`)
+        : `Fundo abstrato/metafórico para post sobre: "${current.headline}". IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto, SEM logos.`
+      const url = await generateSlideImage(prompt, '1:1', useExpertPhoto ? expertPhotoBase64 : undefined)
+      savePost({ ...current, imageUrl: url })
+      toast.success(`${useExpertPhoto ? 'Foto expert' : 'Fundo'} gerado!`, { id: toastId })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro', { id: toastId })
     } finally { setGeneratingImg(false) }
@@ -123,59 +197,105 @@ export default function PostPreview() {
   const txtColor = palette.p.text || palette.p.accent
 
   const renderCard = () => {
-    const bg = post.imageUrl
-      ? `linear-gradient(rgba(0,0,0,0.45),rgba(0,0,0,0.55)), url(${post.imageUrl}) center/cover no-repeat`
-      : `linear-gradient(145deg, ${bgColor} 0%, ${palette.p.secondary} 100%)`
-    const color = post.imageUrl ? '#ffffff' : txtColor
-    const subColor = post.imageUrl ? 'rgba(255,255,255,0.8)' : `${txtColor}cc`
     const pad = Math.round(SIZE * 0.08)
+    const hLen = post.headline.length
+    const totalLen = hLen + post.subtitle.length
 
-    const isPhotoLayout = layout === 'photo-left' || layout === 'photo-right'
-    const isQuote = layout === 'quote'
-    const isCta = layout === 'cta'
+    // Auto-scale headline
+    const scaleH = (base: number) => (hLen > 80 ? base * 0.55 : hLen > 60 ? base * 0.65 : hLen > 40 ? base * 0.8 : base) * fontScale
+    // Auto-scale subtitle
+    const scaleS = (base: number) => (totalLen > 300 ? base * 0.7 : totalLen > 200 ? base * 0.8 : totalLen > 120 ? base * 0.9 : base) * fontScale
 
+    const color = post.imageUrl ? palette.p.primary : txtColor
+    const subColor = post.imageUrl ? `${palette.p.primary}dd` : `${txtColor}cc`
+    const brandEl = (
+      <span style={{ fontSize: 8, color: subColor, opacity: 0.5, letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'monospace' }}>
+        {profile?.name || 'sua marca'}
+      </span>
+    )
+    const logoEl = logo && <img src={logo} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain' as const, opacity: 0.7 }} />
+
+    // ── PHOTO LEFT / PHOTO RIGHT ──
+    if (layout === 'photo-left' || layout === 'photo-right') {
+      const imgSide = post.imageUrl
+        ? <div style={{ width: '45%', height: '100%', background: `url(${post.imageUrl}) center/cover no-repeat`, flexShrink: 0 }} />
+        : <div style={{ width: '45%', height: '100%', background: palette.p.primary, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 48, opacity: 0.3, color: palette.p.accent }}>✦</span>
+          </div>
+      const textSide = (
+        <div style={{ flex: 1, padding: pad, display: 'flex', flexDirection: 'column', justifyContent: 'center', background: bgColor }}>
+          <h2 style={{ fontSize: scaleH(20), fontWeight: 900, color: txtColor, lineHeight: 1.15, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em' }}>{post.headline}</h2>
+          {post.subtitle && <><div style={{ height: 8 }} /><p style={{ fontSize: scaleS(11), color: `${txtColor}cc`, lineHeight: 1.5, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
+          <div style={{ marginTop: 'auto', paddingTop: 12 }}>{brandEl}</div>
+        </div>
+      )
+      return (
+        <div ref={cardRef} style={{ width: SIZE, height: SIZE, display: 'flex', flexDirection: layout === 'photo-left' ? 'row' : 'row-reverse', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
+          {imgSide}{textSide}
+        </div>
+      )
+    }
+
+    // ── EDITORIAL ──
+    if (layout === 'editorial') {
+      const bg = post.imageUrl
+        ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}60 40%, ${bgColor}ee 100%), url(${post.imageUrl}) center/cover no-repeat`
+        : bgColor
+      return (
+        <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
+          <div style={{ width: 4, height: 50, background: palette.p.primary, borderRadius: 2, marginBottom: 16 }} />
+          <h2 style={{ fontSize: scaleH(24), fontWeight: 900, color, lineHeight: 1.15, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em', textTransform: 'uppercase' as const }}>{post.headline}</h2>
+          {post.subtitle && <><div style={{ height: 10 }} /><p style={{ fontSize: scaleS(12), color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{brandEl}{logoEl}</div>
+        </div>
+      )
+    }
+
+    // ── QUOTE ──
+    if (layout === 'quote') {
+      const bg = post.imageUrl
+        ? `linear-gradient(to bottom, ${bgColor}20 0%, ${bgColor}80 50%, ${bgColor}ee 100%), url(${post.imageUrl}) center/cover no-repeat`
+        : bgColor
+      return (
+        <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box', textAlign: 'center' }}>
+          <div style={{ fontSize: 64, color: palette.p.primary, lineHeight: 0.8, marginBottom: 12, fontFamily: 'Georgia, serif', opacity: 0.6 }}>"</div>
+          <h2 style={{ fontSize: scaleH(22), fontWeight: 700, color, lineHeight: 1.3, margin: 0, fontFamily: font.title, fontStyle: 'italic' }}>{post.headline}</h2>
+          {post.subtitle && <><div style={{ height: 12 }} /><p style={{ fontSize: scaleS(11), color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
+          <div style={{ marginTop: 24, width: 40, height: 2, background: palette.p.primary, borderRadius: 1 }} />
+          <div style={{ marginTop: 12 }}>{brandEl}</div>
+        </div>
+      )
+    }
+
+    // ── CTA ──
+    if (layout === 'cta') {
+      const bg = post.imageUrl
+        ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}50 40%, ${bgColor}ee 100%), url(${post.imageUrl}) center/cover no-repeat`
+        : `linear-gradient(145deg, ${bgColor} 0%, ${palette.p.secondary} 100%)`
+      return (
+        <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
+          <h2 style={{ fontSize: scaleH(28), fontWeight: 900, color, lineHeight: 1.1, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em' }}>{post.headline}</h2>
+          {post.subtitle && <><div style={{ height: 8 }} /><p style={{ fontSize: scaleS(12), color: subColor, lineHeight: 1.5, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
+          <div style={{ marginTop: 20, padding: '12px 24px', background: palette.p.primary, borderRadius: 12, textAlign: 'center', alignSelf: 'stretch' }}>
+            <span style={{ color: palette.p.accent, fontSize: 14 * fontScale, fontWeight: 800, fontFamily: font.sub, letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>Saiba mais →</span>
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{brandEl}{logoEl}</div>
+        </div>
+      )
+    }
+
+    // ── MINIMAL (default) ──
+    const bg = post.imageUrl
+      ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}40 35%, ${bgColor}dd 100%), url(${post.imageUrl}) center/cover no-repeat`
+      : `linear-gradient(145deg, ${bgColor} 0%, ${palette.p.secondary} 100%)`
     return (
-      <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad, display: 'flex', flexDirection: isPhotoLayout ? 'row' : 'column', justifyContent: isCta ? 'flex-end' : isQuote ? 'center' : 'space-between', alignItems: isPhotoLayout ? 'center' : undefined, boxSizing: 'border-box', overflow: 'hidden', position: 'relative', fontFamily: font.sub }}>
-        {/* Accent bar for editorial */}
-        {layout === 'editorial' && (
-          <div style={{ width: 4, height: 40, background: palette.p.primary, borderRadius: 2, marginBottom: 12 }} />
-        )}
-
-        {/* Quote marks */}
-        {isQuote && (
-          <div style={{ fontSize: 48, color: palette.p.primary, lineHeight: 1, marginBottom: 8, fontFamily: 'Georgia, serif' }}>"</div>
-        )}
-
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <h2 style={{ fontSize: isPhotoLayout ? 20 : 26, fontWeight: 900, color, lineHeight: 1.15, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em' }}>
-            {post.headline}
-          </h2>
-          <div style={{ height: 10 }} />
-          <p style={{ fontSize: 13, color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>
-            {post.subtitle}
-          </p>
+      <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad, display: 'flex', flexDirection: 'column', justifyContent: post.imageUrl ? 'flex-end' : 'space-between', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', fontFamily: font.sub }}>
+        <div />
+        <div>
+          <h2 style={{ fontSize: scaleH(26), fontWeight: 900, color, lineHeight: 1.15, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em' }}>{post.headline}</h2>
+          {post.subtitle && <><div style={{ height: 8 }} /><p style={{ fontSize: scaleS(13), color: subColor, lineHeight: 1.5, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
         </div>
-
-        {/* CTA button */}
-        {isCta && (
-          <div style={{ marginTop: 16, padding: '10px 20px', background: palette.p.primary, borderRadius: 8, textAlign: 'center' }}>
-            <span style={{ color: palette.p.accent, fontSize: 13, fontWeight: 700, fontFamily: font.sub }}>Saiba mais</span>
-          </div>
-        )}
-
-        {/* Logo */}
-        {logo && (
-          <div style={{ position: 'absolute', bottom: pad, right: pad }}>
-            <img src={logo} alt="" style={{ height: 20, maxWidth: 60, objectFit: 'contain', opacity: 0.7 }} />
-          </div>
-        )}
-
-        {/* Brand name */}
-        <div style={{ position: 'absolute', bottom: pad, left: pad }}>
-          <span style={{ fontSize: 8, color: subColor, opacity: 0.5, letterSpacing: 2, textTransform: 'uppercase', fontFamily: 'monospace' }}>
-            {profile?.name || 'sua marca'}
-          </span>
-        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{brandEl}{logoEl}</div>
       </div>
     )
   }
@@ -192,9 +312,14 @@ export default function PostPreview() {
             <p className="text-xs text-gray-400">1080×1080</p>
           </div>
         </div>
-        <button onClick={download} disabled={downloading} className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-          <Download size={15} /> Download PNG
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView('post-editor' as View)} className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 hover:border-violet-400 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-semibold transition-all">
+            <Pencil size={14} /> Voltar ao Editor
+          </button>
+          <button onClick={download} disabled={downloading} className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+            <Download size={15} /> Download PNG
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -206,8 +331,8 @@ export default function PostPreview() {
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Cor</p>
                 <div className="flex gap-2">
-                  {PALETTES.map(p => (
-                    <button key={p.id} onClick={() => setPalette(p)} title={p.label} style={{ background: p.p.primary }} className={cn('w-6 h-6 rounded-full transition-all', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105')} />
+                  {allPalettes.map(p => (
+                    <button key={p.id} onClick={() => setPalette(p)} title={p.label} className={cn('w-7 h-7 rounded-full transition-all border', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105', p.p.background === '#ffffff' ? 'border-gray-300' : 'border-transparent')} style={{ background: `linear-gradient(135deg, ${p.p.background || p.p.secondary} 50%, ${p.p.primary} 50%)` }} />
                   ))}
                 </div>
               </div>
@@ -219,11 +344,28 @@ export default function PostPreview() {
                   ))}
                 </div>
               </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Tamanho</p>
+                <div className="flex items-center gap-2">
+                  <input type="range" min="0.7" max="1.8" step="0.1" value={fontScale} onChange={e => setFontScale(parseFloat(e.target.value))} className="w-20 h-1.5 accent-violet-600" />
+                  <span className="text-xs text-gray-500 font-mono w-8">{Math.round(fontScale * 100)}%</span>
+                </div>
+              </div>
             </div>
 
             {/* Card */}
             <div style={{ width: SIZE, borderRadius: 12, overflow: 'hidden' }} className="shadow-lg">
               {renderCard()}
+            </div>
+
+            {/* Download + Regenerate buttons */}
+            <div className="flex gap-2" style={{ width: SIZE }}>
+              <button onClick={download} disabled={downloading} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-lg">
+                <Download size={16} /> {downloading ? 'Exportando...' : 'Download PNG'}
+              </button>
+              <button onClick={() => genImage(true)} disabled={generatingImg} className="flex items-center justify-center gap-2 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-lg" title="Gerar nova foto mantendo texto e cores">
+                <RefreshCw size={16} className={generatingImg ? 'animate-spin' : ''} /> Regenerar
+              </button>
             </div>
 
             {/* Actions */}
@@ -233,8 +375,11 @@ export default function PostPreview() {
                 <Image size={12} className="inline mr-1" />Foto
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </label>
-              <button onClick={genImage} disabled={generatingImg} className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 disabled:opacity-40">
-                <Wand2 size={12} className="inline mr-1" />IA
+              <button onClick={() => genImage(true)} disabled={generatingImg} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 disabled:opacity-40" title="Gerar foto com sua imagem">
+                <Wand2 size={10} className="inline mr-0.5" />Foto Expert
+              </button>
+              <button onClick={() => genImage(false)} disabled={generatingImg} className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 hover:text-violet-600 disabled:opacity-40" title="Gerar fundo abstrato sem rosto">
+                <Wand2 size={10} className="inline mr-0.5" />Fundo IA
               </button>
             </div>
 

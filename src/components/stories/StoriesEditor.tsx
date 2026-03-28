@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Wand2, Sparkles } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
+import type { View } from '../../contexts/AppContext'
 import type { Tone, StoryType, StoriesInputs, StoriesData, StorySlide } from '../../types'
 import { getDefaultProfile, createSimpleProject, updateProjectStories } from '../../services/storageService'
 import { generateStoriesCopy, generateStoriesFormat } from '../../services/geminiService'
@@ -70,7 +71,7 @@ export default function StoriesEditor() {
       updateProjectStories(project.id, storiesData)
       refreshProjects()
       setCurrentProject({ ...project, current_stories_data: storiesData })
-      setView('stories-preview' as any)
+      setView('stories-preview' as View)
       toast.success('Stories importados do Luminae!')
       return
     }
@@ -92,7 +93,7 @@ export default function StoriesEditor() {
       updateProjectStories(project.id, storiesData)
       refreshProjects()
       setCurrentProject({ ...project, current_stories_data: storiesData })
-      setView('stories-preview' as any)
+      setView('stories-preview' as View)
       toast.success('Stories formatados!', { id: toastId })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro', { id: toastId })
@@ -126,7 +127,7 @@ export default function StoriesEditor() {
       refreshProjects()
 
       setCurrentProject({ ...project, current_stories_data: storiesData })
-      setView('stories-preview' as any)
+      setView('stories-preview' as View)
       toast.success('Stories gerados!', { id: toastId })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro', { id: toastId })

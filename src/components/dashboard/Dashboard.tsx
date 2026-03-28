@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Search, Heart, MoreVertical, Archive, Trash2, Calendar, Layers, Star, Square, Film } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
+import type { View } from '../../contexts/AppContext'
 import { toggleFavorite, archiveProject, deleteProject } from '../../services/storageService'
 import type { Project } from '../../types'
 import { cn } from '../../utils/cn'
@@ -146,9 +147,9 @@ export default function Dashboard() {
   const openProject = (p: Project) => {
     setCurrentProject(p)
     if (p.type === 'post') {
-      setView(p.current_post_data ? 'post-preview' as any : 'post-editor' as any)
+      setView(p.current_post_data ? 'post-preview' as View : 'post-editor' as View)
     } else if (p.type === 'stories') {
-      setView(p.current_stories_data ? 'stories-preview' as any : 'stories-editor' as any)
+      setView(p.current_stories_data ? 'stories-preview' as View : 'stories-editor' as View)
     } else {
       if (p.current_carousel_data) {
         setCurrentCarousel(p.current_carousel_data)
@@ -179,13 +180,13 @@ export default function Dashboard() {
             <Layers size={16} /> Carrossel
           </button>
           <button
-            onClick={() => { setCurrentProject(null); setView('post-editor' as any) }}
+            onClick={() => { setCurrentProject(null); setView('post-editor' as View) }}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
           >
             <Square size={16} /> Post Estático
           </button>
           <button
-            onClick={() => { setCurrentProject(null); setView('stories-editor' as any) }}
+            onClick={() => { setCurrentProject(null); setView('stories-editor' as View) }}
             className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
           >
             <Film size={16} /> Stories
