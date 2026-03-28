@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import React from 'react'
 import { Toaster } from 'react-hot-toast'
 import { Menu } from 'lucide-react'
@@ -23,7 +23,13 @@ import { getDefaultProfile } from './services/storageService'
 function AppContent() {
   const { view, isDark, apiKey, refreshProfiles } = useApp()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(!getDefaultProfile())
+  const [showOnboarding, setShowOnboarding] = useState(() => !getDefaultProfile())
+
+  // Recovery: re-check profile after mount (fixes race condition)
+  useEffect(() => {
+    const profile = getDefaultProfile()
+    if (profile && showOnboarding) setShowOnboarding(false)
+  }, [])
 
   const handleOnboardingComplete = () => {
     refreshProfiles()

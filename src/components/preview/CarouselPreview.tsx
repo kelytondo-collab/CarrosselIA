@@ -673,10 +673,10 @@ export default function CarouselPreview() {
         )}
 
         {/* LEGENDA TAB */}
-        {tab === 'legenda' && caption && (
+        {tab === 'legenda' && (
           <div className="px-6 py-6 max-w-2xl">
             <CaptionEditor
-              caption={caption}
+              caption={caption || { hook: '', body: '', cta: '', hashtags: '', altText: '' }}
               onChange={(updated: Caption) => {
                 if (currentProject && currentCarousel) {
                   const newCarousel = { ...currentCarousel, caption: updated }
