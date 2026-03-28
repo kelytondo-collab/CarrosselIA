@@ -24,6 +24,25 @@ export interface QuoteVideoConfig extends VideoConfig {
   brand?: string
 }
 
+export interface ReelsConexaoPhrase {
+  order: number
+  phrase: string
+  keywords: string[]
+  arc: string
+}
+
+export interface ReelsConexaoConfig extends VideoConfig {
+  phrases: ReelsConexaoPhrase[]
+  backgroundVideoUrl: string
+  handle?: string          // @username
+  fontFamily: string
+  fontSize: number
+  textColor: string
+  highlightColor: string   // keyword color (amber/yellow)
+  showTranslation?: boolean
+  translations?: string[]  // optional translation per phrase
+}
+
 export interface CarouselReelConfig extends VideoConfig {
   slides: { headline: string; subtitle: string; background: string; backgroundImage?: string }[]
   fontFamily: string
@@ -285,6 +304,146 @@ export async function renderCarouselReel(config: CarouselReelConfig): Promise<Bl
         ctx.restore()
       } else {
         drawSlide(ctx, currentSlide, config, 1, curImg)
+      }
+
+      frame++
+    }, 1000 / config.fps)
+  })
+}
+
+/**
+ * Render a Reels Conexão video:
+ * B-roll video background + animated phrase captions at the bottom + keywords highlighted
+ * Audio from the original video is preserved via AudioContext mixing.
+ */
+export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = config.width
+  canvas.height = config.height
+  const ctx = canvas.getContext('2d')!
+
+  // Load background video
+  const bgVideo = await loadVideo(config.backgroundVideoUrl)
+  bgVideo.muted = false // we want audio
+  bgVideo.currentTime = 0
+
+  // Setup audio capture from the video
+  const audioCtx = new AudioContext()
+  const source = audioCtx.createMediaElementSource(bgVideo)
+  const audioDest = audioCtx.createMediaStreamDestination()
+  source.connect(audioDest)
+  source.connect(audioCtx.destination) // also play locally (optional)
+
+  // Combine canvas video stream + audio stream
+  const canvasStream = canvas.captureStream(config.fps)
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioDest.stream.getAudioTracks(),
+  ])
+
+  const recorder = new MediaRecorder(combinedStream, {
+    mimeType: 'video/webm;codecs=vp9,opus',
+    videoBitsPerSecond: 5_000_000,
+  })
+
+  const chunks: Blob[] = []
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
+
+  const totalFrames = Math.ceil((config.durationMs / 1000) * config.fps)
+  const phraseCount = config.phrases.length
+  const framesPerPhrase = Math.floor(totalFrames / phraseCount)
+
+  await bgVideo.play()
+
+  return new Promise((resolve) => {
+    recorder.onstop = () => {
+      bgVideo.pause()
+      bgVideo.src = ''
+      audioCtx.close()
+      const blob = new Blob(chunks, { type: 'video/webm' })
+      resolve(blob)
+    }
+
+    recorder.start()
+
+    let frame = 0
+    const interval = setInterval(() => {
+      if (frame >= totalFrames) {
+        clearInterval(interval)
+        recorder.stop()
+        return
+      }
+
+      // Draw background video
+      drawMediaCover(ctx, bgVideo, config.width, config.height)
+
+      // Dark gradient at bottom for text readability
+      const gradH = config.height * 0.35
+      const grad = ctx.createLinearGradient(0, config.height - gradH, 0, config.height)
+      grad.addColorStop(0, 'rgba(0,0,0,0)')
+      grad.addColorStop(0.4, 'rgba(0,0,0,0.4)')
+      grad.addColorStop(1, 'rgba(0,0,0,0.8)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, config.height - gradH, config.width, gradH)
+
+      // Determine which phrase to show
+      const phraseIdx = Math.min(Math.floor(frame / framesPerPhrase), phraseCount - 1)
+      const phrase = config.phrases[phraseIdx]
+      const frameInPhrase = frame - phraseIdx * framesPerPhrase
+      const phraseProgress = frameInPhrase / framesPerPhrase
+
+      // Text position: bottom area
+      const textY = config.height - config.height * 0.14
+      const handleY = textY - config.fontSize * 1.8
+
+      // Draw @ handle
+      if (config.handle) {
+        ctx.font = `500 ${config.fontSize * 0.45}px ${config.fontFamily}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'
+        ctx.fillText(config.handle, config.width / 2, handleY)
+      }
+
+      // Draw phrase with keyword highlights
+      const words = phrase.phrase.split(/\s+/)
+      ctx.font = `900 ${config.fontSize}px ${config.fontFamily}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+
+      // Calculate total width for centering
+      const wordWidths = words.map(w => ctx.measureText(w + ' ').width)
+      const totalWidth = wordWidths.reduce((a, b) => a + b, 0)
+      let startX = (config.width - totalWidth) / 2
+
+      // Fade in effect
+      const fadeAlpha = Math.min(1, phraseProgress * 4) // fade in over 25% of phrase time
+      const fadeOut = phraseProgress > 0.85 ? Math.max(0, 1 - (phraseProgress - 0.85) / 0.15) : 1
+      const alpha = fadeAlpha * fadeOut
+
+      words.forEach((word, wi) => {
+        const isKeyword = phrase.keywords.some(kw =>
+          word.toLowerCase().replace(/[^a-záàâãéèêíïóôõúùç]/g, '') === kw.toLowerCase()
+        )
+        ctx.fillStyle = isKeyword
+          ? hexToRgba(config.highlightColor, alpha)
+          : hexToRgba(config.textColor, alpha)
+
+        ctx.textAlign = 'left'
+        ctx.fillText(word, startX, textY)
+        startX += wordWidths[wi]
+      })
+
+      // Optional translation line below
+      if (config.showTranslation && config.translations?.[phraseIdx]) {
+        ctx.font = `700 ${config.fontSize * 0.5}px ${config.fontFamily}`
+        ctx.textAlign = 'center'
+        ctx.fillStyle = hexToRgba(config.highlightColor, alpha * 0.8)
+        ctx.fillText(
+          config.translations[phraseIdx].toUpperCase(),
+          config.width / 2,
+          textY + config.fontSize * 1.1
+        )
       }
 
       frame++

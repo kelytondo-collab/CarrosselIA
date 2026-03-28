@@ -17,6 +17,7 @@ import StoriesEditor from './components/stories/StoriesEditor'
 import StoriesPreview from './components/stories/StoriesPreview'
 import QuoteVideoEditor from './components/video/QuoteVideoEditor'
 import CarouselReelEditor from './components/video/CarouselReelEditor'
+import ReelsConexaoEditor from './components/video/ReelsConexaoEditor'
 import { getDefaultProfile } from './services/storageService'
 
 function AppContent() {
@@ -56,6 +57,7 @@ function AppContent() {
     'stories-preview': <StoriesPreview />,
     'quote-video': <QuoteVideoEditor />,
     'carousel-reel': <CarouselReelEditor />,
+    'reels-conexao': <ReelsConexaoEditor />,
   }
 
   return (
