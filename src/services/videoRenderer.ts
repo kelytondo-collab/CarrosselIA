@@ -450,9 +450,12 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
       const alpha = fadeAlpha * fadeOut
 
       words.forEach((word, wi) => {
-        const isKeyword = phrase.keywords.some(kw =>
-          word.toLowerCase().replace(/[^a-záàâãéèêíïóôõúùç]/g, '') === kw.toLowerCase()
-        )
+        const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '')
+        const wordNorm = normalize(word)
+        const isKeyword = phrase.keywords.some(kw => {
+          const kwNorm = normalize(kw)
+          return kwNorm.length > 0 && (wordNorm === kwNorm || wordNorm.includes(kwNorm))
+        })
         ctx.fillStyle = isKeyword
           ? hexToRgba(config.highlightColor, alpha)
           : hexToRgba(config.textColor, alpha)
