@@ -306,7 +306,7 @@ EXTRAIA do texto (NÃO reescreva):
 
 export const generateStoriesFormat = async (
   baseText: string,
-  niche: string,
+  _niche: string,
   storyCount: number,
   onProgress?: (phase: string, pct: number) => void,
 ): Promise<StoriesData> => {

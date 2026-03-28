@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
-import { ArrowLeft, Download, Wand2, Copy, Check, Palette, Type, Image, RefreshCw, Pencil } from 'lucide-react'
+import { ArrowLeft, Download, Wand2, Palette, Type, Image, RefreshCw, Pencil } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import type { ColorPalette, LayoutType, PostData, Caption } from '../../types'
@@ -119,7 +119,6 @@ export default function PostPreview() {
   const [generatingImg, setGeneratingImg] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [editingText, setEditingText] = useState(false)
-  const [copied, setCopied] = useState('')
   const [fontScale, setFontScale] = useState(1.0)
 
   const cardRef = useRef<HTMLDivElement>(null)
@@ -186,11 +185,6 @@ export default function PostPreview() {
       const a = document.createElement('a'); a.href = url; a.download = `post-${Date.now()}.png`; a.click()
       URL.revokeObjectURL(url)
     } catch { toast.error('Erro ao exportar') } finally { setDownloading(false) }
-  }
-
-  const copy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text); setCopied(key)
-    setTimeout(() => setCopied(''), 2000); toast.success('Copiado!')
   }
 
   const bgColor = palette.p.background || palette.p.secondary
@@ -299,8 +293,6 @@ export default function PostPreview() {
       </div>
     )
   }
-
-  const fullCaption = `${post.caption.hook}\n\n${post.caption.body}\n\n${post.caption.cta}\n\n${post.caption.hashtags}`
 
   return (
     <div className="flex flex-col h-full">

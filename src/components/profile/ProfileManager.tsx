@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2, Check, User, Loader2, Camera } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { SpecialistProfile, Tone, Platform, SlideCount, ColorPalette } from '../../types'

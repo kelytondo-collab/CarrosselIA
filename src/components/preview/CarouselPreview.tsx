@@ -9,7 +9,7 @@ import type { SlideTemplate } from '../shared/LayoutTemplates'
 import { TEMPLATES } from '../shared/LayoutTemplates'
 import GradientPicker, { GRADIENT_PRESETS, BackgroundTypeSelector } from '../shared/GradientPicker'
 import type { BackgroundType } from '../shared/GradientPicker'
-import { exportSlideAsImage, exportAllSlidesAsZip, exportCaptionAsTxt, exportManyChatAsTxt } from '../../services/exportService'
+import { exportSlideAsImage, exportAllSlidesAsZip, exportManyChatAsTxt } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
 import { updateProjectCarousel, getDefaultProfile } from '../../services/storageService'
 import { saveCarouselImages, restoreCarouselImages } from '../../services/imageCache'
@@ -296,8 +296,6 @@ export default function CarouselPreview() {
     setTimeout(() => setCopied(''), 2000)
     toast.success('Copiado!')
   }
-
-  const fullCaption = `${caption.hook}\n\n${caption.body}\n\n${caption.cta}\n\n${caption.hashtags}`
 
   const formatFlow = (flow: typeof manychat.flow2) => {
     if (typeof flow === 'string') return flow

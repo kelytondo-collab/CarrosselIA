@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Wand2, Download, Play, Loader2, Upload, X, Sparkles } from 'lucide-react'
+import { Download, Play, Loader2, Upload, X, Sparkles } from 'lucide-react'
 import { renderQuoteVideo } from '../../services/videoRenderer'
 import type { QuoteVideoConfig } from '../../services/videoRenderer'
 import { GRADIENT_PRESETS } from '../shared/GradientPicker'

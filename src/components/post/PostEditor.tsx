@@ -1,12 +1,11 @@
 import { useState, useRef } from 'react'
-import { Wand2, Upload, X, Loader2, Image, Sparkles, ClipboardPaste } from 'lucide-react'
+import { Wand2, Upload, X, Loader2, Image, Sparkles } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import type { Tone, PostInputs, PostData } from '../../types'
-import type { InputMode, LuminaeImportData } from '../../types/luminae'
 import { getDefaultProfile, createSimpleProject, updateProjectPost } from '../../services/storageService'
 import { generatePostCopy, generatePostFormat, clonePostVisual } from '../../services/geminiService'
-import { parseLuminaeContent, detectContentFormat } from '../../services/luminaeParser'
+import { parseLuminaeContent } from '../../services/luminaeParser'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -64,7 +63,7 @@ export default function PostEditor() {
       const postData: PostData = {
         headline: parsed.slides[0].headline,
         subtitle: parsed.slides[0].subtitle,
-        caption: parsed.caption,
+        caption: { ...parsed.caption, hashtags: parsed.caption.hashtags || '' },
         visualPrompt: parsed.slides[0].visualPrompt || '',
         layout: 'minimal',
         generatedAt: new Date().toISOString(),

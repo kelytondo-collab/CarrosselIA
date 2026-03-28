@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Wand2, Sparkles } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
-import type { Tone, StoryType, StoriesInputs, StoriesData, StorySlide } from '../../types'
+import type { Tone, StoryType, StoriesInputs, StoriesData } from '../../types'
 import { getDefaultProfile, createSimpleProject, updateProjectStories } from '../../services/storageService'
 import { generateStoriesCopy, generateStoriesFormat } from '../../services/geminiService'
 import { parseLuminaeContent } from '../../services/luminaeParser'
@@ -64,7 +64,7 @@ export default function StoriesEditor() {
           visualPrompt: s.visualPrompt || '',
           layout: 'minimal' as const,
         })),
-        caption: parsed.caption,
+        caption: { ...parsed.caption, hashtags: parsed.caption.hashtags || '' },
         generatedAt: new Date().toISOString(),
       }
       const project = createSimpleProject(`Luminae Stories: ${parsed.slides[0].headline.slice(0, 25)}`, parsed.slides[0].headline, 'stories')
