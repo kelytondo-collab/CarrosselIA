@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
-import { Download, Play, Loader2, Upload, X, Sparkles } from 'lucide-react'
+import { Download, Play, Loader2, Upload, X, Sparkles, ArrowLeft } from 'lucide-react'
 import { renderQuoteVideo } from '../../services/videoRenderer'
 import type { QuoteVideoConfig } from '../../services/videoRenderer'
 import { GRADIENT_PRESETS } from '../shared/GradientPicker'
 import { getDefaultProfile } from '../../services/storageService'
 import { generateSlideImage } from '../../services/geminiService'
+import { useApp } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -13,6 +14,7 @@ type VideoFormat = 'reel' | 'feed'
 type BgMode = 'gradient' | 'ia' | 'video'
 
 export default function QuoteVideoEditor() {
+  const { setView } = useApp()
   const profile = getDefaultProfile()
 
   const [text, setText] = useState('')
@@ -137,8 +139,13 @@ export default function QuoteVideoEditor() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 overflow-y-auto h-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Video Citacao</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Frase animada sobre gradiente, imagem IA ou video — perfeito para Reels</p>
+        <div className="flex items-center gap-3 mb-1">
+          <button onClick={() => setView('dashboard')} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><ArrowLeft size={18} /></button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Video Citacao</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Frase animada sobre gradiente, imagem IA ou video — perfeito para Reels</p>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-5">

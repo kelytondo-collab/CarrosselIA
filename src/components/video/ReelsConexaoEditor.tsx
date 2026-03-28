@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
-import { Download, Play, Loader2, Upload, X, Plus, Trash2, Clipboard } from 'lucide-react'
+import { Download, Play, Loader2, Upload, X, Plus, Trash2, Clipboard, ArrowLeft } from 'lucide-react'
 import { renderReelsConexao } from '../../services/videoRenderer'
 import type { ReelsConexaoConfig, ReelsConexaoPhrase } from '../../services/videoRenderer'
 import { getDefaultProfile } from '../../services/storageService'
+import { useApp } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -30,6 +31,7 @@ const DEFAULT_PHRASES: PhraseEntry[] = [
 ]
 
 export default function ReelsConexaoEditor() {
+  const { setView } = useApp()
   const profile = getDefaultProfile()
 
   const [phrases, setPhrases] = useState<PhraseEntry[]>(DEFAULT_PHRASES)
@@ -159,10 +161,15 @@ export default function ReelsConexaoEditor() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 overflow-y-auto h-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Reels Conexao</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Video b-roll + frases animadas com keywords — cria conexao emocional sem olhar pra camera
-        </p>
+        <div className="flex items-center gap-3 mb-1">
+          <button onClick={() => setView('dashboard')} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><ArrowLeft size={18} /></button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reels Conexao</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Video b-roll + frases animadas com keywords — cria conexao emocional sem olhar pra camera
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-5">

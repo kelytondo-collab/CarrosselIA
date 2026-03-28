@@ -47,7 +47,7 @@ export interface CarouselReelConfig extends VideoConfig {
   slides: { headline: string; subtitle: string; background: string; backgroundImage?: string }[]
   fontFamily: string
   textColor: string
-  transitionType: 'fade' | 'slide-left' | 'slide-up'
+  transitionType: 'fade' | 'slide-left' | 'slide-up' | 'zoom-in' | 'zoom-out'
   secondsPerSlide: number
   fontScale?: number
 }
@@ -300,6 +300,34 @@ export async function renderCarouselReel(config: CarouselReelConfig): Promise<Bl
         ctx.translate(-offset, 0)
         drawSlide(ctx, currentSlide, config, 1, curImg)
         ctx.translate(config.width, 0)
+        drawSlide(ctx, nextSlide, config, 1, nxtImg)
+        ctx.restore()
+      } else if (isTransitioning && config.transitionType === 'slide-up') {
+        const offset = transitionProgress * config.height
+        ctx.save()
+        ctx.translate(0, -offset)
+        drawSlide(ctx, currentSlide, config, 1, curImg)
+        ctx.translate(0, config.height)
+        drawSlide(ctx, nextSlide, config, 1, nxtImg)
+        ctx.restore()
+      } else if (isTransitioning && config.transitionType === 'zoom-in') {
+        const scale = 1 + transitionProgress * 0.3
+        ctx.save()
+        ctx.globalAlpha = 1 - transitionProgress
+        ctx.translate(config.width / 2, config.height / 2)
+        ctx.scale(scale, scale)
+        ctx.translate(-config.width / 2, -config.height / 2)
+        drawSlide(ctx, currentSlide, config, 1, curImg)
+        ctx.restore()
+        drawSlide(ctx, nextSlide, config, transitionProgress, nxtImg)
+      } else if (isTransitioning && config.transitionType === 'zoom-out') {
+        drawSlide(ctx, currentSlide, config, 1 - transitionProgress, curImg)
+        const scale = 1.3 - transitionProgress * 0.3
+        ctx.save()
+        ctx.globalAlpha = transitionProgress
+        ctx.translate(config.width / 2, config.height / 2)
+        ctx.scale(scale, scale)
+        ctx.translate(-config.width / 2, -config.height / 2)
         drawSlide(ctx, nextSlide, config, 1, nxtImg)
         ctx.restore()
       } else {

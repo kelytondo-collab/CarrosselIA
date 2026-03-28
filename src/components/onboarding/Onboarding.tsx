@@ -89,6 +89,7 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
 
   // Step 1
   const [name, setName] = useState(existingProfile?.name || '')
+  const [instagramHandle, setInstagramHandle] = useState(existingProfile?.instagramHandle || '')
   const [niche, setNiche] = useState(existingProfile?.niche || '')
   const [targetAudience, setTargetAudience] = useState(existingProfile?.targetAudience || '')
   const [tone, setTone] = useState<Tone>(existingProfile?.tone || 'descontraído')
@@ -208,6 +209,7 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
     const profile: SpecialistProfile = {
       id: existingProfile?.id || crypto.randomUUID(),
       name: name.trim(),
+      instagramHandle: instagramHandle.trim() || undefined,
       niche: niche.trim(),
       targetAudience: targetAudience.trim(),
       tone,
@@ -271,6 +273,11 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
               <div>
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">Seu nome / marca *</label>
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Dra. Marina Santos" className={inputCls} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">@ do Instagram</label>
+                <input value={instagramHandle} onChange={e => setInstagramHandle(e.target.value)} placeholder="Ex: @dra.marina.santos" className={inputCls} />
               </div>
 
               <div>

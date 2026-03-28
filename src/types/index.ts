@@ -39,6 +39,7 @@ export interface SpecialistProfile {
   created_at: string
   voiceBlueprint?: string
   preferred_font?: 'inter' | 'playfair' | 'georgia' | 'helvetica'
+  instagramHandle?: string
 }
 
 export interface ProjectInputs {

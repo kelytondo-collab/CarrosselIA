@@ -98,7 +98,10 @@ export default function CarouselPreview() {
   const brandPal = PALETTES.find(p => p.id === 'brand') || PALETTES[0]
   const [palette, setPalette] = useState(brandPal)
   const [font, setFont] = useState(getProfileFont())
-  const [brand, setBrand] = useState('')
+  const [brand, setBrand] = useState(() => {
+    const p = getDefaultProfile()
+    return p?.instagramHandle || (p?.name ? `@${p.name.toLowerCase().replace(/\s+/g, '')}` : '')
+  })
   const [slides, setSlides] = useState<SlideData[]>(currentCarousel?.slides || [])
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
   const [editHeadline, setEditHeadline] = useState('')
@@ -374,6 +377,16 @@ export default function CarouselPreview() {
                       className={cn('w-7 h-7 rounded-full transition-all border', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105', p.p.background === '#ffffff' ? 'border-gray-300' : 'border-transparent')}
                     />
                   ))}
+                  <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <input type="color" value={palette.p.primary} onChange={e => setPalette({ ...palette, id: 'custom', label: 'Custom', p: { ...palette.p, primary: e.target.value } })} className="w-6 h-6 rounded cursor-pointer border border-gray-300 dark:border-gray-600" title="Cor principal" />
+                      <span className="text-[8px] text-gray-400">Texto</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <input type="color" value={palette.p.background || palette.p.secondary} onChange={e => setPalette({ ...palette, id: 'custom', label: 'Custom', p: { ...palette.p, background: e.target.value } })} className="w-6 h-6 rounded cursor-pointer border border-gray-300 dark:border-gray-600" title="Cor de fundo" />
+                      <span className="text-[8px] text-gray-400">Fundo</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -642,34 +655,43 @@ export default function CarouselPreview() {
         )}
 
         {/* ESTRATÉGIA TAB */}
-        {tab === 'estrategia' && strategy && (
-          <div className="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
-            {[
-              { label: '👤 Persona', key: 'persona' },
-              { label: '💢 Dor Central', key: 'painPoint' },
-              { label: '✨ Desejo Profundo', key: 'desire' },
-              { label: '📖 Trilha Narrativa', key: 'narrativePath' },
-              { label: '🧠 Nível de Consciência', key: 'consciousnessLevel' },
-              { label: '🎯 Gancho', key: 'hook' },
-            ].map(item => (
-              <div key={item.key} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-                <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-2">{item.label}</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {(strategy as unknown as Record<string, string>)[item.key] || '—'}
-                </p>
-              </div>
-            ))}
-            {seoKeywords && seoKeywords.length > 0 && (
-              <div className="sm:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-                <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">🔍 Palavras-chave SEO</p>
-                <div className="flex flex-wrap gap-2">
-                  {seoKeywords.map(kw => (
-                    <span key={kw} className="px-3 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full text-xs font-medium">{kw}</span>
-                  ))}
+        {tab === 'estrategia' && (
+          strategy && (strategy.persona || strategy.painPoint || strategy.desire || strategy.hook) ? (
+            <div className="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+              {[
+                { label: '👤 Persona', key: 'persona' },
+                { label: '💢 Dor Central', key: 'painPoint' },
+                { label: '✨ Desejo Profundo', key: 'desire' },
+                { label: '📖 Trilha Narrativa', key: 'narrativePath' },
+                { label: '🧠 Nível de Consciência', key: 'consciousnessLevel' },
+                { label: '🎯 Gancho', key: 'hook' },
+              ].map(item => (
+                <div key={item.key} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                  <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-2">{item.label}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {(strategy as unknown as Record<string, string>)[item.key] || '—'}
+                  </p>
                 </div>
+              ))}
+              {seoKeywords && seoKeywords.length > 0 && (
+                <div className="sm:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                  <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3">🔍 Palavras-chave SEO</p>
+                  <div className="flex flex-wrap gap-2">
+                    {seoKeywords.map(kw => (
+                      <span key={kw} className="px-3 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full text-xs font-medium">{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="px-6 py-6 max-w-2xl">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center">
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">Nenhuma estrategia disponivel</p>
+                <p className="text-gray-400 dark:text-gray-500 text-xs">Gere um carrossel do zero (modo "Criar") para ter a estrategia completa. O modo Luminae importa apenas os slides.</p>
               </div>
-            )}
-          </div>
+            </div>
+          )
         )}
 
         {/* LEGENDA TAB */}

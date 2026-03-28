@@ -107,6 +107,29 @@ Os slides intermediários = uma ideia completa cada.
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
   const parsed = JSON.parse(jsonText) as CarouselData
 
+  // Validate strategy fields
+  if (!parsed.strategy || typeof parsed.strategy !== 'object') {
+    parsed.strategy = { persona: '', painPoint: '', desire: '', narrativePath: '', consciousnessLevel: '', niche: inputs.niche, hook: '' }
+  } else {
+    parsed.strategy.persona = parsed.strategy.persona || ''
+    parsed.strategy.painPoint = parsed.strategy.painPoint || ''
+    parsed.strategy.desire = parsed.strategy.desire || ''
+    parsed.strategy.narrativePath = parsed.strategy.narrativePath || ''
+    parsed.strategy.consciousnessLevel = parsed.strategy.consciousnessLevel || ''
+    parsed.strategy.niche = parsed.strategy.niche || inputs.niche
+    parsed.strategy.hook = parsed.strategy.hook || ''
+  }
+
+  // Validate caption fields
+  if (!parsed.caption || typeof parsed.caption !== 'object') {
+    parsed.caption = { hook: '', body: '', cta: '', hashtags: '' }
+  } else {
+    parsed.caption.hook = parsed.caption.hook || ''
+    parsed.caption.body = parsed.caption.body || ''
+    parsed.caption.cta = parsed.caption.cta || ''
+    parsed.caption.hashtags = parsed.caption.hashtags || ''
+  }
+
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
     ...s,
     id: i + 1,
@@ -697,28 +720,13 @@ export const clonePostVisual = async (
           { inlineData: { mimeType: refMime, data: refData } },
           { inlineData: { mimeType: userMime, data: userData } },
           {
-            text: `CONTEXTO IMPORTANTE: A IMAGEM 1 é um POST DE INSTAGRAM. Ela contém uma FOTOGRAFIA DE FUNDO com TEXTOS/FRASES sobrepostos por cima. Você DEVE ignorar completamente qualquer texto, letra, número, palavra ou tipografia que apareça na IMAGEM 1 — eles são overlays do app e NÃO fazem parte da foto.
+            text: `IMAGE 1 = reference photo style. IMAGE 2 = person to feature.
 
-A IMAGEM 2 mostra a pessoa que deve aparecer no resultado final.
+Create a NEW professional photo: same background scene, lighting, colors, composition and pose as IMAGE 1, but featuring the person from IMAGE 2 (their face, hair, skin tone).
 
-TAREFA: Gere uma FOTOGRAFIA PURA (100% foto, ZERO texto) que clone os elementos FOTOGRÁFICOS da IMAGEM 1:
-• MESMO cenário/fundo por trás (engrenagens, paisagem, studio, etc)
-• MESMAS cores, paleta, temperatura de cor da FOTO
-• MESMA iluminação, sombras, brilhos, efeitos de luz
-• MESMA composição, enquadramento, ângulo de câmera
-• MESMA pose corporal, posição na imagem
-• MESMO estilo de roupa/acessórios
-• MESMOS efeitos visuais (desfoque, arcos dourados, bokeh, etc)
+CRITICAL: Generate ONLY a pure photograph. NO text, words, letters, numbers or typography in the output — ignore any text overlays in IMAGE 1.
 
-A ÚNICA mudança: a pessoa no resultado tem a aparência da IMAGEM 2 (rosto, cabelo, tom de pele).
-
-REGRAS ABSOLUTAS:
-1. A imagem gerada NÃO PODE conter NENHUM texto, frase, palavra, letra, número ou tipografia — NEM MESMO os textos que aparecem na IMAGEM 1. IGNORE-OS COMPLETAMENTE.
-2. Gere APENAS fotografia pura — como se os textos do post original nunca existissem.
-3. A imagem final deve parecer que a FOTO ORIGINAL foi feita com a pessoa da IMAGEM 2 desde o início.
-
-Formato: quadrado 1080x1080.
-Qualidade: fotografia profissional cinematográfica, resolução máxima.`
+Format: square 1080x1080. Cinematic quality.`
           }
         ]
       }],
@@ -727,9 +735,25 @@ Qualidade: fotografia profissional cinematográfica, resolução máxima.`
 
     clonedImageUrl = extractImage(imageResult)
   } catch (imgErr: unknown) {
-    const msg = imgErr instanceof Error ? imgErr.message : String(imgErr)
-    console.error('[CLONE] Erro ao gerar imagem:', msg)
-    throw new Error(`Erro ao clonar: ${msg}`)
+    // Retry with simpler prompt
+    try {
+      const retryResult = await imageModel.generateContent({
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: refMime, data: refData } },
+            { inlineData: { mimeType: userMime, data: userData } },
+            { text: `Take the visual style, background and lighting from image 1. Place the person from image 2 in the same scene and pose. Output a clean photo with NO text. 1080x1080.` }
+          ]
+        }],
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
+      } as any)
+      clonedImageUrl = extractImage(retryResult)
+    } catch (retryErr: unknown) {
+      const msg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+      console.error('[CLONE] Erro ao gerar imagem:', msg)
+      throw new Error(`Erro ao clonar: ${msg}`)
+    }
   }
 
   // Also analyze colors from the reference using text model

@@ -34,7 +34,6 @@ export default function PostEditor() {
   const [niche] = useState(defaultProfile?.niche || '')
   const [referenceImage, setReferenceImage] = useState<string | undefined>(existingPost?.imageUrl)
   const [analyzing, setAnalyzing] = useState(false)
-  const [cloneTheme, setCloneTheme] = useState(existingPost?.headline || '')
   const [cloneContent, setCloneContent] = useState(existingPost ? `${existingPost.headline}\n${existingPost.subtitle}` : '')
   const [clonePhoto, setClonePhoto] = useState<string | undefined>()
 
@@ -153,13 +152,13 @@ export default function PostEditor() {
   const handleClone = async () => {
     if (!apiKey) { toast.error('Configure sua chave Gemini nas Configuracoes'); return }
     if (!referenceImage) { toast.error('Envie a imagem de referencia para clonar'); return }
-    if (!cloneContent.trim() && !cloneTheme.trim()) { toast.error('Cole seu conteudo ou informe o tema'); return }
+    if (!cloneContent.trim()) { toast.error('Cole seu conteudo para o post'); return }
 
     setAnalyzing(true)
     const toastId = toast.loading('Clonando visual da referencia...')
 
     try {
-      const userText = cloneContent.trim() || cloneTheme.trim()
+      const userText = cloneContent.trim()
       // Use clone photo, or fall back to expert photo from profile
       const photoToUse = clonePhoto || expertPhotoBase64
       if (!photoToUse) { toast.error('Envie sua foto ou configure foto do perfil', { id: toastId }); setAnalyzing(false); return }
@@ -327,13 +326,20 @@ export default function PostEditor() {
             {/* 2. Sua foto */}
             <div>
               <label className={labelCls}>2. Sua foto (imagem do post)</label>
-              <p className="text-xs text-gray-400 mb-2">A IA vai gerar uma foto SUA no mesmo estilo da referência.{expertPhotoBase64 && !clonePhoto ? ' (usando foto do perfil)' : ''}</p>
-              {clonePhoto ? (
+              {(clonePhoto || expertPhotoBase64) ? (
                 <div className="flex items-start gap-3">
-                  <img src={clonePhoto} alt="Foto" className="w-28 h-28 object-cover rounded-xl border border-green-300 dark:border-green-700" />
+                  <img src={clonePhoto || expertPhotoBase64} alt="Foto" className="w-28 h-28 object-cover rounded-xl border border-green-300 dark:border-green-700" />
                   <div className="flex-1">
-                    <p className="text-sm text-green-700 dark:text-green-300 font-medium">Sua foto carregada</p>
-                    <button onClick={() => setClonePhoto(undefined)} className="mt-2 text-xs text-red-500 hover:underline flex items-center gap-1"><X size={12} /> Remover</button>
+                    <p className="text-sm text-green-700 dark:text-green-300 font-medium">{clonePhoto ? 'Sua foto carregada' : 'Usando foto do perfil'}</p>
+                    <div className="flex gap-2 mt-2">
+                      <label className="text-xs text-violet-500 hover:underline cursor-pointer flex items-center gap-1">
+                        <Upload size={12} /> Trocar foto
+                        <input type="file" accept="image/*" className="hidden" onChange={handleClonePhotoUpload} />
+                      </label>
+                      {clonePhoto && (
+                        <button onClick={() => setClonePhoto(undefined)} className="text-xs text-red-500 hover:underline flex items-center gap-1"><X size={12} /> Remover</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -347,15 +353,9 @@ export default function PostEditor() {
 
             {/* 3. Conteudo */}
             <div>
-              <label className={labelCls}>3. Seu conteudo (texto do post)</label>
-              <p className="text-xs text-gray-400 mb-2">Cole seu texto — a IA vai formatar no estilo da referencia SEM reescrever. Se deixar vazio, informe o tema abaixo.</p>
+              <label className={labelCls}>3. Seu conteudo (texto do post) *</label>
+              <p className="text-xs text-gray-400 mb-2">Cole seu texto — a IA vai formatar no estilo da referencia SEM reescrever.</p>
               <textarea value={cloneContent} onChange={e => setCloneContent(e.target.value)} placeholder="Cole aqui sua frase, texto, trecho de aula..." rows={4} className={`${inputCls} resize-none leading-relaxed`} />
-            </div>
-
-            {/* 4. Tema (fallback se nao colou conteudo) */}
-            <div>
-              <label className={labelCls}>4. Tema {cloneContent ? '(opcional)' : '*'}</label>
-              <input value={cloneTheme} onChange={e => setCloneTheme(e.target.value)} placeholder="Ex: Autoconhecimento para mulheres..." className={inputCls} />
             </div>
           </div>
 

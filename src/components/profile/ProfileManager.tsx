@@ -26,6 +26,7 @@ const VOICE_QUESTIONS: { key: string; label: string; placeholder: string }[] = [
 
 const emptyProfile = (): Omit<SpecialistProfile, 'id' | 'created_at'> => ({
   name: '',
+  instagramHandle: '',
   niche: '',
   tone: 'descontraído',
   bio: '',
@@ -158,6 +159,10 @@ export default function ProfileManager() {
                   <label className={labelCls}>Nicho</label>
                   <input value={editing.niche || ''} onChange={e => setEditing({ ...editing, niche: e.target.value })} placeholder="Ex: Psicologia, Coaching..." className={inputCls} />
                 </div>
+              </div>
+              <div>
+                <label className={labelCls}>@ do Instagram</label>
+                <input value={editing.instagramHandle || ''} onChange={e => setEditing({ ...editing, instagramHandle: e.target.value })} placeholder="Ex: @dra.marina.santos" className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Tom de Voz</label>

@@ -9,7 +9,7 @@ import type { SlideData } from '../../types'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
-type TransitionType = 'fade' | 'slide-left' | 'slide-up'
+type TransitionType = 'fade' | 'slide-left' | 'slide-up' | 'zoom-in' | 'zoom-out'
 
 export default function CarouselReelEditor() {
   const { currentCarousel, currentProject, setView } = useApp()
@@ -171,6 +171,8 @@ export default function CarouselReelEditor() {
               { id: 'fade' as const, label: 'Fade' },
               { id: 'slide-left' as const, label: 'Deslizar' },
               { id: 'slide-up' as const, label: 'Subir' },
+              { id: 'zoom-in' as const, label: 'Zoom In' },
+              { id: 'zoom-out' as const, label: 'Zoom Out' },
             ]).map(t => (
               <button
                 key={t.id}

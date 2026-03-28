@@ -175,7 +175,7 @@ export default function StoriesPreview() {
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => setView('dashboard')} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><ArrowLeft size={18} /></button>
+          <button onClick={() => setView('stories-editor' as View)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><ArrowLeft size={18} /></button>
           <div>
             <h1 className="font-bold text-gray-900 dark:text-white text-sm">{currentProject?.name || 'Stories'}</h1>
             <p className="text-xs text-gray-400">{slides.length} stories · 1080×1920</p>

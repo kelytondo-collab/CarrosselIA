@@ -39,7 +39,7 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
   // Background: gradient-first (no image = gradient)
   // When image present, overlay tints toward palette background color
   const background = slide.imageUrl
-    ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}40 35%, ${bgColor}dd 100%), url(${slide.imageUrl}) center/cover no-repeat`
+    ? `linear-gradient(to bottom, ${bgColor}30 0%, ${bgColor}70 35%, ${bgColor}ee 100%), url(${slide.imageUrl}) center/cover no-repeat`
     : customGradient || `linear-gradient(145deg, ${bgColor} 0%, ${palette.secondary} 100%)`
 
   const textColor = slide.imageUrl ? palette.primary : txtColor
@@ -210,7 +210,7 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
         )}
 
         {/* @ Handle */}
-        {tmpl.showAtHandle && brand && (
+        {tmpl.showAtHandle && (
           <div style={{
             marginTop: 20,
             display: 'flex',
@@ -230,8 +230,8 @@ const SlideCard = forwardRef<HTMLDivElement, Props>(function SlideCard(
             }}>
               <span style={{ fontSize: 16, color: accentColor }}>@</span>
             </div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: textColor, fontFamily: subtitleFont }}>
-              {brand}
+            <span style={{ fontSize: 14, fontWeight: 700, color: textColor, fontFamily: subtitleFont, opacity: brand ? 1 : 0.5 }}>
+              {brand || '@seu_perfil'}
             </span>
           </div>
         )}
