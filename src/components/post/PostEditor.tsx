@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Wand2, Upload, X, Loader2, Sparkles } from 'lucide-react'
+import { Wand2, Sparkles } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import type { Tone, PostInputs, PostData } from '../../types'
