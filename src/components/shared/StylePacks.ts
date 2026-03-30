@@ -1,4 +1,5 @@
 import type { StylePackConfig, StylePackId } from '../../types/stylePacks'
+import type { ColorPalette } from '../../types'
 
 // ══════════════════════════════════════════════════
 // AUTOR.IA — 3 Style Packs
@@ -137,6 +138,29 @@ export const STYLE_PACKS: Record<Exclude<StylePackId, 'livre'>, StylePackConfig>
 export function getStylePack(id: StylePackId): StylePackConfig | null {
   if (id === 'livre') return null
   return STYLE_PACKS[id] || null
+}
+
+/**
+ * Retorna o pack com as cores da pessoa aplicadas.
+ * Mapeia: primary→accent, background→dark, accent→light, text→textLight
+ */
+export function getStylePackWithUserPalette(id: StylePackId, userPalette?: ColorPalette | null): StylePackConfig | null {
+  if (id === 'livre') return null
+  const pack = STYLE_PACKS[id]
+  if (!pack || !userPalette) return pack || null
+
+  return {
+    ...pack,
+    palette: {
+      dark: userPalette.background || userPalette.secondary || pack.palette.dark,
+      light: userPalette.accent || pack.palette.light,
+      accent: userPalette.primary || pack.palette.accent,
+      accentSoft: (userPalette.primary || pack.palette.accent) + '20',
+      textDark: userPalette.secondary || userPalette.background || pack.palette.textDark,
+      textLight: userPalette.text || pack.palette.textLight,
+      textMuted: (userPalette.text || pack.palette.textMuted) + '99',
+    },
+  }
 }
 
 export function getSlideSequence(pack: StylePackConfig, slideCount: number) {

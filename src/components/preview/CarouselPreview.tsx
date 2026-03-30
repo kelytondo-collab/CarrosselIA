@@ -12,7 +12,7 @@ import type { BackgroundType } from '../shared/GradientPicker'
 import StyledSlideCard from './StyledSlideCard'
 import StyleSelector from '../shared/StyleSelector'
 import type { StylePackId, StyleSlideConfig } from '../../types/stylePacks'
-import { getStylePack, getSlideSequence } from '../shared/StylePacks'
+import { getStylePackWithUserPalette, getSlideSequence } from '../shared/StylePacks'
 import { exportSlideAsImage, exportAllSlidesAsZip, exportManyChatAsTxt } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
 import { updateProjectCarousel, getDefaultProfile } from '../../services/storageService'
@@ -151,7 +151,8 @@ export default function CarouselPreview() {
   }, [currentCarousel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Style Pack logic ──
-  const activePack = stylePack !== 'livre' ? getStylePack(stylePack) : null
+  const userPalette = getDefaultProfile()?.brandKit?.colors || getDefaultProfile()?.color_palette || null
+  const activePack = stylePack !== 'livre' ? getStylePackWithUserPalette(stylePack, userPalette) : null
   const slideSeq = activePack ? getSlideSequence(activePack, slides.length) : null
 
   function mapSlide(i: number): StyleSlideConfig {
