@@ -711,34 +711,58 @@ export const clonePostVisual = async (
   const userMime = getMimeType(userPhotoBase64)
   const userData = stripDataUrl(userPhotoBase64)
 
-  // CLONE: gera APENAS fotografia profissional — texto é aplicado depois pelo card HTML/CSS
+  // CLONE em 2 passos: (1) descrever referência → (2) gerar foto sem ver a referência
+  // Isso evita que o Gemini copie texto da referência na imagem gerada
   let clonedImageUrl: string
   try {
-    const imageResult = await imageModel.generateContent({
+    // PASSO 1: Modelo de texto analisa a referência e extrai APENAS elementos fotográficos
+    const textModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const descResult = await textModel.generateContent({
       contents: [{
         role: 'user',
         parts: [
           { inlineData: { mimeType: refMime, data: refData } },
+          {
+            text: `Analyze this image and describe ONLY the PHOTOGRAPHIC elements. Ignore ALL text, typography, logos, buttons, graphics, overlays.
+
+Describe in English, in a single dense paragraph:
+1. Person's pose and body position (standing, sitting, angle, hands)
+2. Clothing (color, style, details)
+3. Background scene (color, environment, objects)
+4. Lighting style (soft, dramatic, warm, cool, direction)
+5. Color grading/mood (warm tones, cool tones, contrast level)
+6. Camera angle and framing (close-up, half-body, full-body, eye-level)
+7. Overall aesthetic (professional, casual, editorial, cinematic)
+
+Output ONLY the description paragraph, nothing else. Be very specific about colors and visual details.`
+          }
+        ]
+      }],
+    })
+
+    const photoDescription = descResult.response?.text?.() || 'Professional portrait, confident pose, dark background, warm cinematic lighting, half-body shot'
+    console.log('[CLONE] Photo description:', photoDescription.slice(0, 200))
+
+    // PASSO 2: Gerar foto da pessoa do usuário baseado na DESCRIÇÃO (sem ver a referência)
+    const imageResult = await imageModel.generateContent({
+      contents: [{
+        role: 'user',
+        parts: [
           { inlineData: { mimeType: userMime, data: userData } },
           {
-            text: `You are a portrait photographer. You have two images:
-IMAGE 1 = a reference post/design (ignore ALL text, graphics, buttons, logos in it — focus ONLY on the photographic elements: the person's pose, the lighting, the background scene, the color grading, the camera angle).
-IMAGE 2 = the person who needs a new photo.
+            text: `Create a professional PORTRAIT PHOTOGRAPH of this person matching this exact style:
 
-YOUR TASK: Create a professional PORTRAIT PHOTOGRAPH of the person from IMAGE 2, matching:
-- Same pose/body position as the person in IMAGE 1
-- Same background environment/scene
-- Same lighting style and color grading
-- Same camera angle and framing
+${photoDescription}
 
 CRITICAL RULES:
-1. Output ONLY a raw photograph — as if taken by a camera
-2. There must be ZERO text, ZERO letters, ZERO words, ZERO typography, ZERO graphics, ZERO buttons, ZERO overlays, ZERO watermarks anywhere in the output
-3. Do NOT create a "post" or "design" — create ONLY a photograph
-4. The image must look like an unedited photo straight from a camera
-5. If IMAGE 1 is a graphic design with text, extract ONLY the photographic style (lighting, pose, background) and ignore everything else
+1. Output ONLY a raw photograph — as if taken by a professional camera
+2. There must be ZERO text, ZERO letters, ZERO words, ZERO typography anywhere
+3. There must be ZERO graphics, ZERO buttons, ZERO overlays, ZERO watermarks
+4. The output is PURELY a photograph — not a design, not a post, not a graphic
+5. Keep the person's face and features accurate to the photo provided
+6. Match the described pose, lighting, background, and color grading exactly
 
-Output: 1080x1080 square photograph. Cinematic quality. Clean photo ONLY.`
+Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or graphics.`
           }
         ]
       }],
@@ -747,14 +771,14 @@ Output: 1080x1080 square photograph. Cinematic quality. Clean photo ONLY.`
 
     clonedImageUrl = extractImage(imageResult)
   } catch (imgErr: unknown) {
-    // Retry with even simpler prompt focused purely on photography
+    // Retry with simple prompt (no reference at all)
     try {
       const retryResult = await imageModel.generateContent({
         contents: [{
           role: 'user',
           parts: [
             { inlineData: { mimeType: userMime, data: userData } },
-            { text: `Create a professional portrait photograph of this person. Studio lighting, clean background, cinematic quality. The person should be in a confident professional pose. Output ONLY a clean photograph — no text, no graphics, no overlays, no watermarks. Just a raw photo. 1080x1080 square.` }
+            { text: `Create a professional portrait photograph of this person. Dark background, warm cinematic lighting, confident professional pose, half-body shot. Output ONLY a clean photograph — absolutely no text, no graphics, no overlays, no watermarks. Just a raw photo. 1080x1080 square.` }
           ]
         }],
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
