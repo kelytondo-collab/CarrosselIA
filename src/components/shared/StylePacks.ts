@@ -149,16 +149,32 @@ export function getStylePackWithUserPalette(id: StylePackId, userPalette?: Color
   const pack = STYLE_PACKS[id]
   if (!pack || !userPalette) return pack || null
 
+  const userAccent = userPalette.primary || pack.palette.accent
+
+  // Presença Dourada: full palette override — dark-themed, adapta a qualquer paleta
+  if (id === 'presenca-dourada') {
+    return {
+      ...pack,
+      palette: {
+        dark: userPalette.background || userPalette.secondary || pack.palette.dark,
+        light: userPalette.accent || pack.palette.light,
+        accent: userAccent,
+        accentSoft: userAccent + '20',
+        textDark: userPalette.secondary || userPalette.background || pack.palette.textDark,
+        textLight: userPalette.text || pack.palette.textLight,
+        textMuted: (userPalette.text || pack.palette.textMuted) + '99',
+      },
+    }
+  }
+
+  // Diário Artesanal + Impacto Editorial: preserva identidade do pack
+  // Só muda o accent (cor destaque) com a cor principal do usuário
   return {
     ...pack,
     palette: {
-      dark: userPalette.background || userPalette.secondary || pack.palette.dark,
-      light: userPalette.accent || pack.palette.light,
-      accent: userPalette.primary || pack.palette.accent,
-      accentSoft: (userPalette.primary || pack.palette.accent) + '20',
-      textDark: userPalette.secondary || userPalette.background || pack.palette.textDark,
-      textLight: userPalette.text || pack.palette.textLight,
-      textMuted: (userPalette.text || pack.palette.textMuted) + '99',
+      ...pack.palette,
+      accent: userAccent,
+      accentSoft: userAccent + '20',
     },
   }
 }
