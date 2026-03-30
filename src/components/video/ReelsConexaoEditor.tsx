@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Download, Play, Loader2, Upload, X, Plus, Trash2, Clipboard, ArrowLeft } from 'lucide-react'
+import { Download, Play, Loader2, Upload, X, Plus, Trash2, Clipboard, ArrowLeft, Video } from 'lucide-react'
 import { renderReelsConexao } from '../../services/videoRenderer'
 import type { ReelsConexaoConfig, ReelsConexaoPhrase } from '../../services/videoRenderer'
 import { getDefaultProfile } from '../../services/storageService'
 import { useApp } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
+import TeleprompterRecorder from './TeleprompterRecorder'
 import toast from 'react-hot-toast'
 
 interface PhraseEntry {
@@ -69,6 +70,7 @@ export default function ReelsConexaoEditor() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const [showTeleprompter, setShowTeleprompter] = useState(false)
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -86,6 +88,14 @@ export default function ReelsConexaoEditor() {
     setVideoFile(null)
     setVideoBlobUrl(null)
     if (videoInputRef.current) videoInputRef.current.value = ''
+  }
+
+  const handleRecordingComplete = (_blob: Blob, blobUrl: string) => {
+    if (videoBlobUrl) URL.revokeObjectURL(videoBlobUrl)
+    setVideoFile(null) // recorded, not a file
+    setVideoBlobUrl(blobUrl)
+    setShowTeleprompter(false)
+    toast.success('Video gravado com sucesso!')
   }
 
   // Phrase management
@@ -183,6 +193,17 @@ export default function ReelsConexaoEditor() {
   const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5'
 
   return (
+    <>
+    {/* Teleprompter fullscreen overlay */}
+    {showTeleprompter && (
+      <TeleprompterRecorder
+        phrases={phrases}
+        onRecordingComplete={handleRecordingComplete}
+        onClose={() => setShowTeleprompter(false)}
+        recordingTip={recordingTip}
+      />
+    )}
+
     <div className="max-w-2xl mx-auto px-6 py-8 overflow-y-auto h-full">
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-1">
@@ -190,19 +211,16 @@ export default function ReelsConexaoEditor() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reels Conexao</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Video b-roll + frases animadas com keywords — cria conexao emocional sem olhar pra camera
+              Grave com teleprompter ou importe video — frases animadas com keywords
             </p>
           </div>
         </div>
       </div>
 
       <div className="space-y-5">
-        {/* Video Upload */}
+        {/* Video section */}
         <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-          <label className={labelCls}>Video B-Roll *</label>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-            Grave momentos do dia a dia no celular (lendo, caminhando, natureza). O audio do video sera mantido.
-          </p>
+          <label className={labelCls}>Video *</label>
           {videoBlobUrl ? (
             <div className="relative">
               <video
@@ -215,7 +233,7 @@ export default function ReelsConexaoEditor() {
                 playsInline
               />
               <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 rounded-lg text-[10px] text-white font-bold">
-                {videoFile?.name}
+                {videoFile?.name || 'Gravado no app'}
               </div>
               <button
                 onClick={handleRemoveVideo}
@@ -225,18 +243,31 @@ export default function ReelsConexaoEditor() {
               </button>
             </div>
           ) : (
-            <label className="w-full py-8 border-2 border-dashed border-violet-300 dark:border-violet-700 rounded-xl text-violet-500 hover:border-violet-400 hover:text-violet-600 transition-all flex flex-col items-center gap-2 cursor-pointer">
-              <Upload size={28} />
-              <span className="text-sm font-medium">Importar video b-roll</span>
-              <span className="text-[10px] text-gray-400">MP4, WebM, MOV (max 200MB)</span>
-              <input
-                ref={videoInputRef}
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={handleVideoUpload}
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Record button */}
+              <button
+                onClick={() => setShowTeleprompter(true)}
+                className="py-8 border-2 border-dashed border-rose-300 dark:border-rose-700 rounded-xl text-rose-500 hover:border-rose-400 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-900/10 transition-all flex flex-col items-center gap-2"
+              >
+                <Video size={28} />
+                <span className="text-sm font-bold">Gravar Agora</span>
+                <span className="text-[10px] text-gray-400">Camera + teleprompter</span>
+              </button>
+
+              {/* Import button */}
+              <label className="py-8 border-2 border-dashed border-violet-300 dark:border-violet-700 rounded-xl text-violet-500 hover:border-violet-400 hover:text-violet-600 hover:bg-violet-50/50 dark:hover:bg-violet-900/10 transition-all flex flex-col items-center gap-2 cursor-pointer">
+                <Upload size={28} />
+                <span className="text-sm font-bold">Importar Video</span>
+                <span className="text-[10px] text-gray-400">MP4, WebM, MOV</span>
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={handleVideoUpload}
+                />
+              </label>
+            </div>
           )}
         </div>
 
@@ -447,13 +478,14 @@ export default function ReelsConexaoEditor() {
           </p>
           <ol className="space-y-1.5 text-xs text-violet-600 dark:text-violet-400 leading-relaxed">
             <li><span className="font-bold text-violet-800 dark:text-violet-200">1.</span> No Luminae, gere um "Reels Conexao" sobre o tema desejado</li>
-            <li><span className="font-bold text-violet-800 dark:text-violet-200">2.</span> Copie o resultado e clique em "Colar do Luminae" aqui</li>
-            <li><span className="font-bold text-violet-800 dark:text-violet-200">3.</span> Grave video b-roll no celular (sem olhar pra camera) + narre a reflexao</li>
-            <li><span className="font-bold text-violet-800 dark:text-violet-200">4.</span> Importe o video, ajuste a duracao e clique em Gerar</li>
-            <li><span className="font-bold text-violet-800 dark:text-violet-200">5.</span> Baixe e poste no Instagram!</li>
+            <li><span className="font-bold text-violet-800 dark:text-violet-200">2.</span> Clique "Gravar no AUTOR.IA" ou cole as frases aqui</li>
+            <li><span className="font-bold text-violet-800 dark:text-violet-200">3.</span> Clique "Gravar Agora" — o teleprompter mostra cada frase na tela enquanto voce grava</li>
+            <li><span className="font-bold text-violet-800 dark:text-violet-200">4.</span> Ou importe um video ja gravado (b-roll, celular, etc)</li>
+            <li><span className="font-bold text-violet-800 dark:text-violet-200">5.</span> Ajuste duracao, clique Gerar, baixe e poste!</li>
           </ol>
         </div>
       </div>
     </div>
+    </>
   )
 }
