@@ -105,7 +105,25 @@ export default function CaptionEditor({ caption, onChange, projectName, niche, t
         </div>
       </div>
 
-      {/* Sections */}
+      {/* Full caption preview — copy everything at once */}
+      <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-600">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Legenda completa (pronta pra colar)</p>
+          <span className="text-[10px] text-gray-400">{fullCaption.length} chars</span>
+        </div>
+        <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans leading-relaxed mb-3 max-h-40 overflow-y-auto">
+          {fullCaption}
+        </pre>
+        <button
+          onClick={() => copy(fullCaption, 'legenda')}
+          className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+        >
+          {copied === 'legenda' ? <Check size={14} /> : <Copy size={14} />}
+          {copied === 'legenda' ? 'Copiado!' : 'Copiar legenda completa'}
+        </button>
+      </div>
+
+      {/* Sections (editar individualmente) */}
       <div className="space-y-5">
         {SECTION_META.map(section => {
           const value = caption[section.key] || ''

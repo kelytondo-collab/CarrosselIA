@@ -87,10 +87,10 @@ export default function PostPreview() {
   const PALETTES = buildPalettes()
   const FONTS = buildFonts()
 
-  // If clone provided palette, inject it as first option
+  // Clone palette available but NOT prioritized — brand comes first
   const clonePal = postData?.clonePalette
   const allPalettes = clonePal
-    ? [{ id: 'clone', label: 'Clone', p: clonePal }, ...PALETTES]
+    ? [...PALETTES, { id: 'clone', label: 'Clone', p: clonePal }]
     : PALETTES
 
   // Initial font: clone > profile > first option
@@ -105,9 +105,8 @@ export default function PostPreview() {
     return getProfileFont()
   }
 
-  // Initial palette: clone > brand (from profile) > first option
+  // Initial palette: brand (from profile) > first option (NEVER auto-select clone)
   const getInitialPalette = () => {
-    if (clonePal) return allPalettes[0] // clone palette
     const brand = allPalettes.find(p => p.id === 'brand')
     return brand || allPalettes[0]
   }

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { CarouselData, ProjectInputs, SlideData, Tone, Platform, PostData, PostInputs, StoriesData, StoriesInputs, StorySlide, Caption } from '../types'
+import { getDefaultProfile } from './storageService'
 
 let genAI: GoogleGenerativeAI | null = null
 
@@ -722,9 +723,9 @@ export const clonePostVisual = async (
           {
             text: `IMAGE 1 = reference photo style. IMAGE 2 = person to feature.
 
-Create a NEW professional photo: same background scene, lighting, colors, composition and pose as IMAGE 1, but featuring the person from IMAGE 2 (their face, hair, skin tone).
+Create a NEW professional photo: same background scene, lighting, composition and pose as IMAGE 1, but featuring the person from IMAGE 2 (their face, hair, skin tone).
 
-CRITICAL: Generate ONLY a pure photograph. NO text, words, letters, numbers or typography in the output — ignore any text overlays in IMAGE 1.
+ABSOLUTE RULE — ZERO TEXT: NEVER reproduce ANY text, letters, words, numbers, typography, watermarks, logos or written content from IMAGE 1. The output MUST be a clean photograph with ZERO text elements anywhere. If IMAGE 1 has text overlays, COMPLETELY IGNORE them — they are NOT part of the style. Output ONLY the photographic scene.
 
 Format: square 1080x1080. Cinematic quality.`
           }
@@ -743,7 +744,7 @@ Format: square 1080x1080. Cinematic quality.`
           parts: [
             { inlineData: { mimeType: refMime, data: refData } },
             { inlineData: { mimeType: userMime, data: userData } },
-            { text: `Take the visual style, background and lighting from image 1. Place the person from image 2 in the same scene and pose. Output a clean photo with NO text. 1080x1080.` }
+            { text: `Take the visual style, background and lighting from image 1. Place the person from image 2 in the same scene and pose. Output ONLY a clean photograph — ABSOLUTELY NO text, letters, words, numbers, typography or watermarks anywhere in the image. 1080x1080.` }
           ]
         }],
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
@@ -756,22 +757,16 @@ Format: square 1080x1080. Cinematic quality.`
     }
   }
 
-  // Also analyze colors from the reference using text model
-  let style: Record<string, string> = { primaryHex: '#d4a574', backgroundHex: '#0f0f0f', textHex: '#ffffff', accentHex: '#d4a574', fontStyle: 'bold sans-serif' }
-  try {
-    const textModel0 = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-    const analyzeResult = await textModel0.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType: refMime, data: refData } },
-          { text: `Analise as cores e fontes deste post. Retorne APENAS JSON: {"primaryHex":"#hex destaque","backgroundHex":"#hex fundo","textHex":"#hex texto","accentHex":"#hex secundaria","fontStyle":"bold sans-serif ou serif ou script"}` }
-        ]
-      }]
-    })
-    const raw = analyzeResult.response.text().replace(/```json/gi, '').replace(/```/g, '').trim()
-    style = { ...style, ...JSON.parse(raw) }
-  } catch { /* use defaults */ }
+  // Use PROFILE palette (not reference image colors) to avoid wrong colors in clone
+  const profile = getDefaultProfile()
+  const brandColors = profile?.brandKit?.colors || profile?.color_palette
+  const style: Record<string, string> = {
+    primaryHex: brandColors?.primary || '#d4a574',
+    backgroundHex: brandColors?.background || brandColors?.secondary || '#0f0f0f',
+    textHex: brandColors?.text || '#ffffff',
+    accentHex: brandColors?.accent || brandColors?.primary || '#d4a574',
+    fontStyle: 'bold sans-serif',
+  }
 
   // Step 2: Split user text — headline = first line, subtitle = ALL the rest (card auto-scales font)
   const lines = userText.split('\n').filter(l => l.trim())

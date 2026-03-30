@@ -40,6 +40,7 @@ export interface SpecialistProfile {
   voiceBlueprint?: string
   preferred_font?: 'inter' | 'playfair' | 'georgia' | 'helvetica'
   instagramHandle?: string
+  stylePackId?: 'livre' | 'presenca-dourada' | 'diario-artesanal' | 'impacto-editorial'
 }
 
 export interface ProjectInputs {

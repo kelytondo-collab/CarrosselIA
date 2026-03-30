@@ -18,10 +18,11 @@ import StoriesPreview from './components/stories/StoriesPreview'
 import QuoteVideoEditor from './components/video/QuoteVideoEditor'
 import CarouselReelEditor from './components/video/CarouselReelEditor'
 import ReelsConexaoEditor from './components/video/ReelsConexaoEditor'
-import { getDefaultProfile } from './services/storageService'
+import { getDefaultProfile, createSimpleProject, updateProjectCarousel, updateProjectPost, updateProjectStories } from './services/storageService'
+import toast from 'react-hot-toast'
 
 function AppContent() {
-  const { view, isDark, apiKey, refreshProfiles } = useApp()
+  const { view, isDark, apiKey, refreshProfiles, setView, setCurrentProject, setCurrentCarousel, refreshProjects } = useApp()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !getDefaultProfile())
 
@@ -29,6 +30,87 @@ function AppContent() {
   useEffect(() => {
     const profile = getDefaultProfile()
     if (profile && showOnboarding) setShowOnboarding(false)
+  }, [])
+
+  // Luminae → Carrossel: detect #import= hash on mount
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash.startsWith('#import=')) return
+    try {
+      const b64 = hash.slice('#import='.length)
+      const json = decodeURIComponent(escape(atob(b64)))
+      const data = JSON.parse(json)
+      // Clear hash immediately
+      window.history.replaceState(null, '', window.location.pathname)
+
+      const tipo = data.tipo || 'carrossel'
+      const slides = data.slides || []
+      const caption = data.caption || { hook: '', body: '', cta: '', hashtags: '' }
+
+      if (tipo === 'carrossel' && slides.length > 0) {
+        const carouselSlides = slides.map((s: { headline?: string; subtitle?: string }, i: number) => ({
+          id: i + 1,
+          headline: s.headline || '',
+          subtitle: s.subtitle || '',
+          visualPrompt: '',
+          emotion: '',
+          isGeneratingImage: false,
+          style: {},
+        }))
+        const carousel = {
+          strategy: { persona: '', painPoint: '', desire: '', narrativePath: '', consciousnessLevel: '', niche: '', hook: caption.hook || '' },
+          slides: carouselSlides,
+          caption: { hook: caption.hook || '', body: caption.body || '', cta: caption.cta || '', hashtags: caption.hashtags || '', altText: '' },
+          manychat: { keyword: '', flow1: '', flow2: '', flow3: '' },
+          format: '4:5' as const,
+          generatedAt: new Date().toISOString(),
+        }
+        const project = createSimpleProject(`Luminae: ${slides[0]?.headline?.slice(0, 30) || 'Import'}`, slides[0]?.headline || '', 'carousel')
+        updateProjectCarousel(project.id, carousel)
+        refreshProjects()
+        setCurrentProject({ ...project, current_carousel_data: carousel })
+        setCurrentCarousel(carousel)
+        setView('preview')
+        toast.success('Carrossel importado do Luminae!')
+      } else if (tipo === 'post') {
+        const postData = {
+          headline: slides[0]?.headline || '',
+          subtitle: slides[0]?.subtitle || '',
+          caption: { hook: caption.hook || '', body: caption.body || '', cta: caption.cta || '', hashtags: caption.hashtags || '' },
+          visualPrompt: '',
+          layout: 'minimal' as const,
+          generatedAt: new Date().toISOString(),
+        }
+        const project = createSimpleProject(`Luminae: ${postData.headline.slice(0, 30)}`, postData.headline, 'post')
+        updateProjectPost(project.id, postData)
+        refreshProjects()
+        setCurrentProject({ ...project, current_post_data: postData })
+        setView('post-preview')
+        toast.success('Post importado do Luminae!')
+      } else if (tipo === 'stories' && slides.length > 0) {
+        const storySlides = slides.map((s: { headline?: string; subtitle?: string }, i: number) => ({
+          id: i + 1,
+          type: 'content' as const,
+          headline: s.headline || '',
+          body: s.subtitle || '',
+          visualPrompt: '',
+          layout: 'minimal' as const,
+        }))
+        const storiesData = {
+          slides: storySlides,
+          caption: { hook: caption.hook || '', body: caption.body || '', cta: caption.cta || '', hashtags: caption.hashtags || '' },
+          generatedAt: new Date().toISOString(),
+        }
+        const project = createSimpleProject(`Luminae: ${slides[0]?.headline?.slice(0, 30) || 'Stories'}`, slides[0]?.headline || '', 'stories')
+        updateProjectStories(project.id, storiesData)
+        refreshProjects()
+        setCurrentProject({ ...project, current_stories_data: storiesData })
+        setView('stories-preview')
+        toast.success('Stories importados do Luminae!')
+      }
+    } catch (err) {
+      console.error('[Luminae Import] Erro ao decodificar hash:', err)
+    }
   }, [])
 
   const handleOnboardingComplete = () => {

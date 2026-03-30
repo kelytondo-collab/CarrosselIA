@@ -9,6 +9,10 @@ import type { SlideTemplate } from '../shared/LayoutTemplates'
 import { TEMPLATES } from '../shared/LayoutTemplates'
 import GradientPicker, { GRADIENT_PRESETS, BackgroundTypeSelector } from '../shared/GradientPicker'
 import type { BackgroundType } from '../shared/GradientPicker'
+import StyledSlideCard from './StyledSlideCard'
+import StyleSelector from '../shared/StyleSelector'
+import type { StylePackId, StyleSlideConfig } from '../../types/stylePacks'
+import { getStylePack, getSlideSequence } from '../shared/StylePacks'
 import { exportSlideAsImage, exportAllSlidesAsZip, exportManyChatAsTxt } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
 import { updateProjectCarousel, getDefaultProfile } from '../../services/storageService'
@@ -119,6 +123,10 @@ export default function CarouselPreview() {
   const [customGradient, setCustomGradient] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
   const [fontScale, setFontScale] = useState(1.0)
+  const [stylePack, setStylePack] = useState<StylePackId>(() => {
+    const p = getDefaultProfile()
+    return (p?.stylePackId as StylePackId) || 'livre'
+  })
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
 
   // Restore cached images on mount
@@ -130,6 +138,19 @@ export default function CarouselPreview() {
       })
     }
   }, [currentProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Style Pack logic ──
+  const activePack = stylePack !== 'livre' ? getStylePack(stylePack) : null
+  const slideSeq = activePack ? getSlideSequence(activePack, slides.length) : null
+
+  function mapSlide(i: number): StyleSlideConfig {
+    if (!slideSeq) return { variant: 'gold-dark', role: 'content' }
+    if (i === 0) return slideSeq[0]
+    if (i === slides.length - 1) return slideSeq[slideSeq.length - 1]
+    const mid = slideSeq.slice(1, -1)
+    if (mid.length === 0) return slideSeq[0]
+    return mid[(i - 1) % mid.length]
+  }
 
   if (!currentCarousel) {
     return (
@@ -364,8 +385,11 @@ export default function CarouselPreview() {
           <div className="px-6 py-6">
             {/* Controls */}
             <div className="flex flex-wrap gap-4 items-start mb-6 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
-              {/* Palette */}
-              <div>
+              {/* Style Pack selector */}
+              <StyleSelector selected={stylePack} onChange={setStylePack} />
+
+              {/* Palette — only in livre mode */}
+              {!activePack && <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Cor</p>
                 <div className="flex gap-2">
                   {PALETTES.map(p => (
@@ -388,10 +412,10 @@ export default function CarouselPreview() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>}
 
-              {/* Gradient override */}
-              <div>
+              {/* Gradient override — only in livre mode */}
+              {!activePack && <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Fundo</p>
                 <div className="flex gap-1.5 flex-wrap">
                   <button
@@ -411,10 +435,10 @@ export default function CarouselPreview() {
                     />
                   ))}
                 </div>
-              </div>
+              </div>}
 
-              {/* Font */}
-              <div>
+              {/* Font — only in livre mode */}
+              {!activePack && <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Fonte</p>
                 <div className="flex gap-1">
                   {FONTS.map(f => (
@@ -432,7 +456,7 @@ export default function CarouselPreview() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>}
 
               {/* Gen All */}
               <div>
@@ -475,8 +499,8 @@ export default function CarouselPreview() {
                 </div>
               </div>
 
-              {/* Templates toggle */}
-              <div>
+              {/* Templates toggle — only in livre mode */}
+              {!activePack && <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><LayoutGrid size={11} /> Layout</p>
                 <button
                   onClick={() => setShowTemplates(!showTemplates)}
@@ -485,11 +509,11 @@ export default function CarouselPreview() {
                   <LayoutGrid size={12} />
                   Templates
                 </button>
-              </div>
+              </div>}
             </div>
 
-            {/* Template selector panel */}
-            {showTemplates && (
+            {/* Template selector panel — only in livre mode */}
+            {!activePack && showTemplates && (
               <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 mb-4 space-y-3">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Gradientes</p>
@@ -514,21 +538,38 @@ export default function CarouselPreview() {
                 <div key={slide.id} className="flex flex-col gap-2">
                   {/* Card */}
                   <div style={{ width: DISP_W, borderRadius: 12, overflow: 'hidden', position: 'relative' }} className="shadow-md">
-                    <SlideCard
-                      ref={el => { slideRefs.current[i] = el }}
-                      slide={slide}
-                      index={i}
-                      total={slides.length}
-                      palette={palette.p}
-                      brand={brand}
-                      width={DISP_W}
-                      height={DISP_H}
-                      titleFont={font.title}
-                      subtitleFont={font.sub}
-                      template={slideTemplates[i]}
-                      customGradient={!slide.imageUrl && customGradient ? GRADIENT_PRESETS.find(g => g.id === customGradient)?.css : undefined}
-                      fontScale={fontScale}
-                    />
+                    {activePack && slideSeq ? (
+                      <StyledSlideCard
+                        ref={el => { slideRefs.current[i] = el }}
+                        slide={slide}
+                        index={i}
+                        total={slides.length}
+                        pack={activePack}
+                        variant={mapSlide(i).variant}
+                        role={mapSlide(i).role}
+                        brand={brand}
+                        expertPhoto={expertPhotoBase64}
+                        width={DISP_W}
+                        height={DISP_H}
+                        fontScale={fontScale}
+                      />
+                    ) : (
+                      <SlideCard
+                        ref={el => { slideRefs.current[i] = el }}
+                        slide={slide}
+                        index={i}
+                        total={slides.length}
+                        palette={palette.p}
+                        brand={brand}
+                        width={DISP_W}
+                        height={DISP_H}
+                        titleFont={font.title}
+                        subtitleFont={font.sub}
+                        template={slideTemplates[i]}
+                        customGradient={!slide.imageUrl && customGradient ? GRADIENT_PRESETS.find(g => g.id === customGradient)?.css : undefined}
+                        fontScale={fontScale}
+                      />
+                    )}
                     {generatingImg.has(i) && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 rounded-xl">
                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -570,8 +611,8 @@ export default function CarouselPreview() {
                     )}
                   </div>
 
-                  {/* Template selector per slide */}
-                  {showTemplates && (
+                  {/* Template selector per slide — only in livre mode */}
+                  {!activePack && showTemplates && (
                     <div className="flex flex-wrap gap-1" style={{ width: DISP_W }}>
                       {TEMPLATES.map(t => (
                         <button
@@ -597,7 +638,8 @@ export default function CarouselPreview() {
                     </button>
                   </div>
 
-                  <div className="flex gap-1" style={{ width: DISP_W }}>
+                  {/* Text position — only in livre mode */}
+                  {!activePack && <div className="flex gap-1" style={{ width: DISP_W }}>
                     {(['top', 'middle', 'bottom'] as const).map(pos => (
                       <button
                         key={pos}
@@ -612,7 +654,7 @@ export default function CarouselPreview() {
                         {pos === 'top' ? '↑ Topo' : pos === 'middle' ? '● Centro' : '↓ Base'}
                       </button>
                     ))}
-                  </div>
+                  </div>}
 
                   {/* Edit panel */}
                   {editingIdx === i && (
