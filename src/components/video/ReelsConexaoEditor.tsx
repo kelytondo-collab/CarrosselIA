@@ -5,7 +5,7 @@ import type { ReelsConexaoConfig, ReelsConexaoPhrase } from '../../services/vide
 import { getDefaultProfile } from '../../services/storageService'
 import { useApp } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
-import TeleprompterRecorder from './TeleprompterRecorder'
+import TeleprompterRecorder, { type PhraseTimestamp } from './TeleprompterRecorder'
 import toast from 'react-hot-toast'
 
 interface PhraseEntry {
@@ -71,6 +71,7 @@ export default function ReelsConexaoEditor() {
   const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const [showTeleprompter, setShowTeleprompter] = useState(false)
+  const [phraseTimestamps, setPhraseTimestamps] = useState<PhraseTimestamp[]>([])
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -90,10 +91,11 @@ export default function ReelsConexaoEditor() {
     if (videoInputRef.current) videoInputRef.current.value = ''
   }
 
-  const handleRecordingComplete = (_blob: Blob, blobUrl: string) => {
+  const handleRecordingComplete = (_blob: Blob, blobUrl: string, timestamps: PhraseTimestamp[]) => {
     if (videoBlobUrl) URL.revokeObjectURL(videoBlobUrl)
     setVideoFile(null) // recorded, not a file
     setVideoBlobUrl(blobUrl)
+    setPhraseTimestamps(timestamps)
     setShowTeleprompter(false)
     toast.success('Video gravado com sucesso!')
   }
@@ -144,29 +146,44 @@ export default function ReelsConexaoEditor() {
     const validPhrases = phrases.filter(p => p.phrase.trim())
     if (validPhrases.length < 2) { toast.error('Adicione pelo menos 2 frases'); return }
 
+    // If we have timestamps from teleprompter, use the actual recording duration
+    const hasTimestamps = phraseTimestamps.length > 0
+    let actualDurationMs = duration * 1000
+    if (hasTimestamps && phraseTimestamps.length > 0) {
+      // Use last timestamp + ~3 seconds for the last phrase
+      const lastTs = phraseTimestamps[phraseTimestamps.length - 1].startTimeMs
+      actualDurationMs = lastTs + 3000 // 3s for last phrase
+    }
+
     setRendering(true)
     const toastId = toast.loading('Renderizando Reels Conexao...')
 
     try {
-      const phrasesConfig: ReelsConexaoPhrase[] = validPhrases.map((p, i) => ({
-        order: i + 1,
-        phrase: p.phrase.trim(),
-        keywords: p.keywords.split(',').map(k => k.trim()).filter(Boolean),
-        arc: p.arc,
-      }))
+      const phrasesConfig: ReelsConexaoPhrase[] = validPhrases.map((p, i) => {
+        // Find timestamp for this phrase from teleprompter recording
+        const ts = phraseTimestamps.find(t => t.phraseIdx === i)
+        return {
+          order: i + 1,
+          phrase: p.phrase.trim(),
+          keywords: p.keywords.split(',').map(k => k.trim()).filter(Boolean),
+          arc: p.arc,
+          startTimeMs: ts?.startTimeMs,
+        }
+      })
 
       const config: ReelsConexaoConfig = {
         width: 1080,
         height: 1920,
         fps: 30,
-        durationMs: duration * 1000,
+        durationMs: actualDurationMs,
         phrases: phrasesConfig,
         backgroundVideoUrl: videoBlobUrl,
         handle: handle.trim() || undefined,
         fontFamily: 'Inter, sans-serif',
         fontSize: Math.round(48 * fontScale),
         textColor: '#ffffff',
-        highlightColor: '#f59e0b', // amber-500
+        highlightColor: '#f59e0b', // amber-500 fallback
+        useArcColors: true,        // cores por arco emocional
       }
 
       const blob = await renderReelsConexao(config)

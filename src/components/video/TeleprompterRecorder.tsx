@@ -9,9 +9,14 @@ interface Phrase {
   arc: string
 }
 
+export interface PhraseTimestamp {
+  phraseIdx: number
+  startTimeMs: number  // ms from recording start
+}
+
 interface TeleprompterRecorderProps {
   phrases: Phrase[]
-  onRecordingComplete: (blob: Blob, blobUrl: string) => void
+  onRecordingComplete: (blob: Blob, blobUrl: string, timestamps: PhraseTimestamp[]) => void
   onClose: () => void
   recordingTip?: string
 }
@@ -39,6 +44,8 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timestampsRef = useRef<PhraseTimestamp[]>([])
+  const recordingStartRef = useRef<number>(0)
 
   // Start camera
   const startCamera = useCallback(async () => {
@@ -124,6 +131,9 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
     setIsRecording(true)
     setCurrentPhraseIdx(0)
     setElapsed(0)
+    // Start timestamp tracking — phrase 0 starts at time 0
+    recordingStartRef.current = Date.now()
+    timestampsRef.current = [{ phraseIdx: 0, startTimeMs: 0 }]
     elapsedRef.current = setInterval(() => setElapsed(prev => prev + 1), 1000)
   }
 
@@ -145,10 +155,15 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
     setCameraReady(false)
   }
 
-  // Navigate phrases
+  // Navigate phrases — record timestamp when advancing during recording
   const nextPhrase = () => {
     if (currentPhraseIdx < phrases.length - 1) {
-      setCurrentPhraseIdx(prev => prev + 1)
+      const nextIdx = currentPhraseIdx + 1
+      if (isRecording) {
+        const elapsedMs = Date.now() - recordingStartRef.current
+        timestampsRef.current.push({ phraseIdx: nextIdx, startTimeMs: elapsedMs })
+      }
+      setCurrentPhraseIdx(nextIdx)
     } else if (isRecording) {
       handleStopRecording()
     }
@@ -189,7 +204,7 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
         streamRef.current.getTracks().forEach(t => t.stop())
         streamRef.current = null
       }
-      onRecordingComplete(recordedBlob, recordedUrl)
+      onRecordingComplete(recordedBlob, recordedUrl, timestampsRef.current)
     }
   }
 

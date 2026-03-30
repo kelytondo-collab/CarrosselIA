@@ -29,6 +29,15 @@ export interface ReelsConexaoPhrase {
   phrase: string
   keywords: string[]
   arc: string
+  startTimeMs?: number  // timestamp when phrase starts (from teleprompter recording)
+}
+
+// Arc → color mapping
+export const ARC_HIGHLIGHT_COLORS: Record<string, string> = {
+  fachada: '#38bdf8',   // sky-400
+  contraste: '#fbbf24', // amber-400
+  verdade: '#fb7185',   // rose-400
+  convite: '#4ade80',   // green-400
 }
 
 export interface ReelsConexaoConfig extends VideoConfig {
@@ -38,7 +47,8 @@ export interface ReelsConexaoConfig extends VideoConfig {
   fontFamily: string
   fontSize: number
   textColor: string
-  highlightColor: string   // keyword color (amber/yellow)
+  highlightColor: string   // keyword color (fallback)
+  useArcColors?: boolean   // use per-phrase arc colors instead of single highlightColor
   showTranslation?: boolean
   translations?: string[]  // optional translation per phrase
 }
@@ -379,7 +389,33 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
 
   const totalFrames = Math.ceil((config.durationMs / 1000) * config.fps)
   const phraseCount = config.phrases.length
-  const framesPerPhrase = Math.floor(totalFrames / phraseCount)
+
+  // Build phrase timing — either from recorded timestamps or evenly distributed
+  const hasTimestamps = config.phrases.some(p => p.startTimeMs != null)
+  const phraseStartFrames: number[] = []
+  const phraseEndFrames: number[] = []
+
+  if (hasTimestamps) {
+    // Use real timestamps from teleprompter recording
+    for (let i = 0; i < phraseCount; i++) {
+      const startMs = config.phrases[i].startTimeMs || 0
+      phraseStartFrames.push(Math.round((startMs / 1000) * config.fps))
+      // End = next phrase start, or total frames for last
+      if (i < phraseCount - 1) {
+        const nextMs = config.phrases[i + 1].startTimeMs || startMs + 3000
+        phraseEndFrames.push(Math.round((nextMs / 1000) * config.fps))
+      } else {
+        phraseEndFrames.push(totalFrames)
+      }
+    }
+  } else {
+    // Even distribution fallback
+    const framesPerPhrase = Math.floor(totalFrames / phraseCount)
+    for (let i = 0; i < phraseCount; i++) {
+      phraseStartFrames.push(i * framesPerPhrase)
+      phraseEndFrames.push(i === phraseCount - 1 ? totalFrames : (i + 1) * framesPerPhrase)
+    }
+  }
 
   await bgVideo.play()
 
@@ -414,11 +450,20 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
       ctx.fillStyle = grad
       ctx.fillRect(0, config.height - gradH, config.width, gradH)
 
-      // Determine which phrase to show
-      const phraseIdx = Math.min(Math.floor(frame / framesPerPhrase), phraseCount - 1)
+      // Determine which phrase to show based on timing
+      let phraseIdx = 0
+      for (let i = phraseCount - 1; i >= 0; i--) {
+        if (frame >= phraseStartFrames[i]) { phraseIdx = i; break }
+      }
       const phrase = config.phrases[phraseIdx]
-      const frameInPhrase = frame - phraseIdx * framesPerPhrase
-      const phraseProgress = frameInPhrase / framesPerPhrase
+      const phraseDurationFrames = phraseEndFrames[phraseIdx] - phraseStartFrames[phraseIdx]
+      const frameInPhrase = frame - phraseStartFrames[phraseIdx]
+      const phraseProgress = phraseDurationFrames > 0 ? frameInPhrase / phraseDurationFrames : 0
+
+      // Per-phrase highlight color (arc-based)
+      const phraseHighlight = (config.useArcColors && phrase.arc)
+        ? (ARC_HIGHLIGHT_COLORS[phrase.arc] || config.highlightColor)
+        : config.highlightColor
 
       // Text position: bottom area
       const textY = config.height - config.height * 0.14
@@ -444,8 +489,8 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
       const totalWidth = wordWidths.reduce((a, b) => a + b, 0)
       let startX = (config.width - totalWidth) / 2
 
-      // Fade in effect
-      const fadeAlpha = Math.min(1, phraseProgress * 4) // fade in over 25% of phrase time
+      // Fade in/out effect
+      const fadeAlpha = Math.min(1, phraseProgress * 5) // fade in over 20% of phrase time
       const fadeOut = phraseProgress > 0.85 ? Math.max(0, 1 - (phraseProgress - 0.85) / 0.15) : 1
       const alpha = fadeAlpha * fadeOut
 
@@ -457,7 +502,7 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
           return kwNorm.length > 0 && (wordNorm === kwNorm || wordNorm.includes(kwNorm))
         })
         ctx.fillStyle = isKeyword
-          ? hexToRgba(config.highlightColor, alpha)
+          ? hexToRgba(phraseHighlight, alpha)
           : hexToRgba(config.textColor, alpha)
 
         ctx.textAlign = 'left'
@@ -469,7 +514,7 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
       if (config.showTranslation && config.translations?.[phraseIdx]) {
         ctx.font = `700 ${config.fontSize * 0.5}px ${config.fontFamily}`
         ctx.textAlign = 'center'
-        ctx.fillStyle = hexToRgba(config.highlightColor, alpha * 0.8)
+        ctx.fillStyle = hexToRgba(phraseHighlight, alpha * 0.8)
         ctx.fillText(
           config.translations[phraseIdx].toUpperCase(),
           config.width / 2,
