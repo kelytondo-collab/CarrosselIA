@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Plus, Trash2, Check, User, Loader2, Camera } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { SpecialistProfile, Tone, Platform, SlideCount, ColorPalette } from '../../types'
+import type { StylePackId } from '../../types/stylePacks'
 import { saveProfile, deleteProfile } from '../../services/storageService'
 import { generateVoiceBlueprint } from '../../services/geminiService'
+import StyleSelector from '../shared/StyleSelector'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -259,6 +261,15 @@ export default function ProfileManager() {
                   ))}
                 </div>
               </div>
+              {/* Estilo AUTOR.IA */}
+              <div>
+                <StyleSelector
+                  selected={(editing.stylePackId as StylePackId) || 'livre'}
+                  onChange={(id) => setEditing({ ...editing, stylePackId: id })}
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Escolha UMA VEZ — todos os carrosseis usarao este estilo automaticamente</p>
+              </div>
+
               <div className="flex items-center gap-3 pt-1">
                 <button onClick={() => setEditing({ ...editing, is_default: !editing.is_default })} className={cn('flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all', editing.is_default ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>
                   {editing.is_default && <Check size={12} />} Perfil padrão

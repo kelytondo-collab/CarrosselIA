@@ -156,6 +156,20 @@ export default function CarouselPreview() {
 
   function mapSlide(i: number): StyleSlideConfig {
     if (!slideSeq) return { variant: 'gold-dark', role: 'content' }
+    const slide = slides[i]
+    const sem = slide?.semanticType
+
+    // If slide has semantic type, find best matching config from sequence
+    if (sem) {
+      const roleMap: Record<string, StyleSlideConfig['role']> = {
+        capa: 'cover', dor: 'content', conteudo: 'content', lista: 'checklist', cta: 'cta',
+      }
+      const targetRole = roleMap[sem] || 'content'
+      const match = slideSeq.find(s => s.role === targetRole)
+      if (match) return match
+    }
+
+    // Fallback: positional mapping
     if (i === 0) return slideSeq[0]
     if (i === slides.length - 1) return slideSeq[slideSeq.length - 1]
     const mid = slideSeq.slice(1, -1)
@@ -548,7 +562,7 @@ export default function CarouselPreview() {
               {slides.map((slide, i) => (
                 <div key={slide.id} className="flex flex-col gap-2">
                   {/* Card */}
-                  <div style={{ width: DISP_W, borderRadius: 12, overflow: 'hidden', position: 'relative' }} className="shadow-md">
+                  <div style={{ width: DISP_W, borderRadius: 12, overflow: 'hidden', position: 'relative' }} className="shadow-md group cursor-pointer" onClick={() => { if (editingIdx !== i && !generatingImg.has(i)) startEdit(i) }}>
                     {activePack && slideSeq ? (
                       <StyledSlideCard
                         ref={el => { slideRefs.current[i] = el }}
@@ -585,6 +599,12 @@ export default function CarouselPreview() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 rounded-xl">
                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         <p className="text-white text-xs font-medium">Gerando imagem...</p>
+                      </div>
+                    )}
+                    {/* Hover edit indicator */}
+                    {editingIdx !== i && !generatingImg.has(i) && (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none rounded-xl">
+                        <span className="px-3 py-1.5 bg-white/90 dark:bg-gray-800/90 rounded-lg text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-lg">Clique para editar</span>
                       </div>
                     )}
                   </div>
@@ -667,14 +687,31 @@ export default function CarouselPreview() {
                     ))}
                   </div>}
 
-                  {/* Edit panel */}
+                  {/* Inline edit overlay */}
                   {editingIdx === i && (
-                    <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-violet-300 dark:border-violet-700 space-y-2" style={{ width: DISP_W }}>
-                      <input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} className="w-full px-2.5 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white focus:outline-none focus:border-violet-400" placeholder="Título" />
-                      <textarea value={editSubtitle} onChange={e => setEditSubtitle(e.target.value)} rows={3} className="w-full px-2.5 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white resize-none focus:outline-none focus:border-violet-400" placeholder="Subtítulo" />
-                      <div className="flex gap-2">
-                        <button onClick={saveEdit} className="flex-1 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-bold">✓ Salvar</button>
-                        <button onClick={() => setEditingIdx(null)} className="px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-500 rounded-lg text-xs">✕</button>
+                    <div
+                      className="absolute inset-0 rounded-xl bg-black/60 backdrop-blur-sm flex flex-col justify-center p-4 z-10"
+                      style={{ width: DISP_W, height: DISP_H }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <input
+                        autoFocus
+                        value={editHeadline}
+                        onChange={e => setEditHeadline(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/95 dark:bg-gray-800/95 border-2 border-violet-400 rounded-lg text-sm font-bold text-gray-900 dark:text-white focus:outline-none mb-2"
+                        placeholder="Titulo"
+                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).nextElementSibling?.querySelector('textarea')?.focus() }}
+                      />
+                      <textarea
+                        value={editSubtitle}
+                        onChange={e => setEditSubtitle(e.target.value)}
+                        rows={4}
+                        className="w-full px-3 py-2 bg-white/95 dark:bg-gray-800/95 border-2 border-violet-400 rounded-lg text-xs text-gray-900 dark:text-white resize-none focus:outline-none leading-relaxed"
+                        placeholder="Texto do slide"
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={saveEdit} className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold transition-colors">Salvar</button>
+                        <button onClick={() => setEditingIdx(null)} className="px-4 py-2 bg-white/80 dark:bg-gray-700/80 text-gray-600 dark:text-gray-300 rounded-lg text-xs font-semibold">Cancelar</button>
                       </div>
                     </div>
                   )}

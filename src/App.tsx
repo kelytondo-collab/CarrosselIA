@@ -52,7 +52,7 @@ function AppContent() {
       const autoStyle = data.autoStyle === true
 
       if (tipo === 'carrossel' && slides.length > 0) {
-        const carouselSlides = slides.map((s: { headline?: string; subtitle?: string }, i: number) => ({
+        const carouselSlides = slides.map((s: { headline?: string; subtitle?: string; type?: string }, i: number) => ({
           id: i + 1,
           headline: s.headline || '',
           subtitle: s.subtitle || '',
@@ -60,6 +60,7 @@ function AppContent() {
           emotion: '',
           isGeneratingImage: false,
           style: {},
+          semanticType: s.type || undefined,
         }))
         const carousel = {
           strategy: { persona: '', painPoint: '', desire: '', narrativePath: '', consciousnessLevel: '', niche: '', hook: caption.hook || '' },

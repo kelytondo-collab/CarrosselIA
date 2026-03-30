@@ -68,6 +68,8 @@ export interface SlideStyle {
   backgroundColor?: string
 }
 
+export type SemanticSlideType = 'capa' | 'dor' | 'conteudo' | 'lista' | 'cta'
+
 export interface SlideData {
   id: number
   headline: string
@@ -79,6 +81,7 @@ export interface SlideData {
   isGeneratingImage: boolean
   imageError?: string
   style?: SlideStyle
+  semanticType?: SemanticSlideType
 }
 
 export interface Strategy {

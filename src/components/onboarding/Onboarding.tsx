@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react'
 import { Camera, X, Loader2, Check, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 import type { SpecialistProfile, Tone, Platform, SlideCount, BrandKit, BrandFont, ColorPalette } from '../../types'
+import type { StylePackId } from '../../types/stylePacks'
 import { saveProfile } from '../../services/storageService'
 import { generateVoiceBlueprint } from '../../services/geminiService'
+import { STYLE_PACKS } from '../shared/StylePacks'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -96,12 +98,15 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
   const [platform, setPlatform] = useState<Platform>(existingProfile?.default_platform || 'instagram')
   const [slideCount, setSlideCount] = useState<SlideCount>(existingProfile?.default_slide_count || 8)
 
-  // Step 2 - Colors
+  // Step 2 - Colors + Style Pack
   const [selectedPalette, setSelectedPalette] = useState<string>(
     existingProfile?.brandKit ? 'custom' : 'elegante'
   )
   const [colors, setColors] = useState<ColorPalette>(
     existingProfile?.brandKit?.colors || PRESET_PALETTES[0].colors
+  )
+  const [stylePackId, setStylePackId] = useState<StylePackId>(
+    (existingProfile?.stylePackId as StylePackId) || 'presenca-dourada'
   )
 
   // Step 3 - Fonts, logo, photos
@@ -221,6 +226,7 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
       is_default: true,
       created_at: existingProfile?.created_at || new Date().toISOString(),
       voiceBlueprint: voiceBlueprint.trim() || undefined,
+      stylePackId,
     }
 
     saveProfile(profile)
@@ -436,6 +442,50 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* Estilo AUTOR.IA */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">Estilo AUTOR.IA</label>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Escolha o estilo dos seus carrosseis. Voce configura UMA VEZ e todos saem prontos.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['presenca-dourada', 'diario-artesanal', 'impacto-editorial'] as const).map(packId => {
+                    const pack = STYLE_PACKS[packId]
+                    if (!pack) return null
+                    const isActive = stylePackId === packId
+                    return (
+                      <button
+                        key={packId}
+                        onClick={() => setStylePackId(packId)}
+                        className={cn(
+                          'rounded-xl border-2 p-4 transition-all text-left',
+                          isActive
+                            ? 'border-violet-500 shadow-lg shadow-violet-500/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                        )}
+                      >
+                        <div className="flex gap-1.5 mb-2">
+                          <div className="w-6 h-6 rounded-full" style={{ background: pack.palette.dark, border: '1px solid rgba(255,255,255,0.1)' }} />
+                          <div className="w-6 h-6 rounded-full" style={{ background: pack.palette.accent }} />
+                          <div className="w-6 h-6 rounded-full" style={{ background: pack.palette.light }} />
+                        </div>
+                        <p className="text-sm font-bold text-gray-800 dark:text-white">{pack.name}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{pack.description}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={() => setStylePackId('livre')}
+                  className={cn(
+                    'mt-2 w-full px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left',
+                    stylePackId === 'livre'
+                      ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300'
+                  )}
+                >
+                  Modo Livre — controle total de cores e layout manualmente
+                </button>
               </div>
             </div>
           )}
