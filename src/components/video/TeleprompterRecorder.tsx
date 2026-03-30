@@ -137,6 +137,12 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
       clearInterval(elapsedRef.current)
       elapsedRef.current = null
     }
+    // Stop camera immediately so it's not running during review
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setCameraReady(false)
   }
 
   // Navigate phrases
@@ -152,9 +158,37 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
     if (currentPhraseIdx > 0) setCurrentPhraseIdx(prev => prev - 1)
   }
 
+  // Force cleanup everything
+  const cleanupAll = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop() } catch { /* ignore */ }
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    if (elapsedRef.current) {
+      clearInterval(elapsedRef.current)
+      elapsedRef.current = null
+    }
+    setIsRecording(false)
+    setCameraReady(false)
+  }
+
+  // Close — always works, stops everything
+  const handleClose = () => {
+    cleanupAll()
+    onClose()
+  }
+
   // Accept recording
   const handleAccept = () => {
     if (recordedBlob && recordedUrl) {
+      // Stop any remaining streams
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
       onRecordingComplete(recordedBlob, recordedUrl)
     }
   }
@@ -166,6 +200,8 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
     setRecordedUrl(null)
     setCurrentPhraseIdx(0)
     setElapsed(0)
+    // Restart camera
+    startCamera()
   }
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -176,32 +212,47 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
   // Review mode — show recorded video
   if (recordedUrl) {
     return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col">
-        {/* Review video */}
-        <div className="flex-1 relative">
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+        {/* Close button always visible */}
+        <div className="absolute top-4 right-4 z-10">
+          <button onClick={handleClose} className="p-3 rounded-full bg-white/20 text-white backdrop-blur-sm">
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* Title */}
+        <div className="pt-4 pb-2 text-center">
+          <p className="text-white font-bold text-lg">Video gravado!</p>
+          <p className="text-white/50 text-xs">Revise e escolha abaixo</p>
+        </div>
+
+        {/* Review video — constrained height */}
+        <div className="flex-1 flex items-center justify-center px-4 min-h-0">
           <video
             src={recordedUrl}
-            className="w-full h-full object-cover"
+            className="max-h-full max-w-full rounded-2xl"
+            style={{ maxHeight: 'calc(100vh - 200px)' }}
             controls
             autoPlay
             playsInline
           />
         </div>
-        {/* Actions */}
-        <div className="flex gap-4 p-6 bg-black/80 justify-center">
+
+        {/* Actions — always visible at bottom */}
+        <div className="flex gap-4 p-6 justify-center flex-shrink-0">
           <button
             onClick={handleRetry}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gray-800 text-white font-semibold text-sm hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-gray-700 text-white font-semibold text-base active:scale-95 transition-all"
           >
-            <RotateCcw size={18} />
+            <RotateCcw size={20} />
             Gravar de novo
           </button>
           <button
             onClick={handleAccept}
-            className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-green-600 text-white font-bold text-sm hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-green-600 text-white font-bold text-base active:scale-95 transition-all"
           >
-            <Check size={18} />
-            Usar este video
+            <Check size={20} />
+            Usar video
           </button>
         </div>
       </div>
@@ -210,7 +261,7 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
 
   // Recording mode
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <><div className="fixed inset-0 z-[9999] bg-black flex flex-col">
       {/* Camera feed */}
       <div className="flex-1 relative overflow-hidden">
         <video
@@ -226,9 +277,9 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40 pointer-events-none" />
 
         {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between">
-          <button onClick={onClose} className="p-2 rounded-full bg-black/40 text-white backdrop-blur-sm">
-            <X size={20} />
+        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
+          <button onClick={handleClose} className="p-3 rounded-full bg-black/60 text-white backdrop-blur-sm active:scale-90 transition-transform">
+            <X size={24} />
           </button>
           <div className="flex items-center gap-2">
             {isRecording && (
@@ -353,14 +404,18 @@ export default function TeleprompterRecorder({ phrases, onRecordingComplete, onC
         )}
 
         {isRecording && (
-          <button
-            onClick={handleStopRecording}
-            className="w-20 h-20 rounded-full bg-red-600 border-4 border-white flex items-center justify-center hover:bg-red-700 transition-all animate-pulse"
-          >
-            <Square size={24} className="text-white" fill="white" />
-          </button>
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={handleStopRecording}
+              className="w-24 h-24 rounded-full bg-red-600 border-4 border-white flex flex-col items-center justify-center hover:bg-red-700 transition-all animate-pulse shadow-lg shadow-red-600/50"
+            >
+              <Square size={28} className="text-white" fill="white" />
+            </button>
+            <span className="text-white/70 text-xs font-bold uppercase tracking-wider">Toque para parar</span>
+          </div>
         )}
       </div>
     </div>
+    </>
   )
 }
