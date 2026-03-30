@@ -299,7 +299,7 @@ export default function PostEditor() {
         <div className="space-y-5">
           <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
             <div className="rounded-xl p-3 border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-              <span className="font-bold">Como funciona:</span> A IA vai CLONAR o visual exato da referencia — mesmo fundo, mesmas cores, mesmo estilo de texto, mesma composicao. Troca a pessoa pela SUA foto e o texto pelo SEU conteudo. O resultado parece feito pelo mesmo designer.
+              <span className="font-bold">Como funciona:</span> A IA gera uma foto profissional sua no MESMO estilo da referencia (pose, iluminacao, cenario). Depois voce aplica seu texto com os layouts e paletas disponiveis. O resultado = sua foto + seu texto + design premium.
             </div>
 
             {/* 1. Referencia */}

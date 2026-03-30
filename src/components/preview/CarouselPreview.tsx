@@ -139,6 +139,17 @@ export default function CarouselPreview() {
     }
   }, [currentProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-apply style pack when imported with autoStyle flag
+  useEffect(() => {
+    const carousel = currentCarousel as any
+    if (carousel?.autoStyle && stylePack === 'livre') {
+      const profile = getDefaultProfile()
+      const profileStyle = (profile?.stylePackId as StylePackId) || 'presenca-dourada'
+      if (profileStyle !== 'livre') setStylePack(profileStyle)
+      else setStylePack('presenca-dourada') // fallback to first pack
+    }
+  }, [currentCarousel]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Style Pack logic ──
   const activePack = stylePack !== 'livre' ? getStylePack(stylePack) : null
   const slideSeq = activePack ? getSlideSequence(activePack, slides.length) : null

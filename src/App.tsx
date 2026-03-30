@@ -38,7 +38,10 @@ function AppContent() {
     if (!hash.startsWith('#import=')) return
     try {
       const b64 = hash.slice('#import='.length)
-      const json = decodeURIComponent(escape(atob(b64)))
+      // Safe UTF-8 base64 decoding
+      const binary = atob(b64)
+      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
+      const json = new TextDecoder().decode(bytes)
       const data = JSON.parse(json)
       // Clear hash immediately
       window.history.replaceState(null, '', window.location.pathname)
@@ -46,6 +49,7 @@ function AppContent() {
       const tipo = data.tipo || 'carrossel'
       const slides = data.slides || []
       const caption = data.caption || { hook: '', body: '', cta: '', hashtags: '' }
+      const autoStyle = data.autoStyle === true
 
       if (tipo === 'carrossel' && slides.length > 0) {
         const carouselSlides = slides.map((s: { headline?: string; subtitle?: string }, i: number) => ({
@@ -64,14 +68,15 @@ function AppContent() {
           manychat: { keyword: '', flow1: '', flow2: '', flow3: '' },
           format: '4:5' as const,
           generatedAt: new Date().toISOString(),
+          autoStyle,
         }
         const project = createSimpleProject(`Luminae: ${slides[0]?.headline?.slice(0, 30) || 'Import'}`, slides[0]?.headline || '', 'carousel')
-        updateProjectCarousel(project.id, carousel)
+        updateProjectCarousel(project.id, carousel as any)
         refreshProjects()
-        setCurrentProject({ ...project, current_carousel_data: carousel })
-        setCurrentCarousel(carousel)
+        setCurrentProject({ ...project, current_carousel_data: carousel as any })
+        setCurrentCarousel(carousel as any)
         setView('preview')
-        toast.success('Carrossel importado do Luminae!')
+        toast.success(autoStyle ? 'Carrossel pronto! Estilo aplicado automaticamente.' : 'Carrossel importado do Luminae!')
       } else if (tipo === 'post') {
         const postData = {
           headline: slides[0]?.headline || '',
@@ -110,6 +115,7 @@ function AppContent() {
       }
     } catch (err) {
       console.error('[Luminae Import] Erro ao decodificar hash:', err)
+      toast.error('Erro ao importar do Luminae. Tente copiar e colar manualmente.')
     }
   }, [])
 

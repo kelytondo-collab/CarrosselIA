@@ -711,7 +711,7 @@ export const clonePostVisual = async (
   const userMime = getMimeType(userPhotoBase64)
   const userData = stripDataUrl(userPhotoBase64)
 
-  // CLONE: cria foto profissional da pessoa (imagem 2) no MESMO estilo visual da referência (imagem 1)
+  // CLONE: gera APENAS fotografia profissional — texto é aplicado depois pelo card HTML/CSS
   let clonedImageUrl: string
   try {
     const imageResult = await imageModel.generateContent({
@@ -721,13 +721,24 @@ export const clonePostVisual = async (
           { inlineData: { mimeType: refMime, data: refData } },
           { inlineData: { mimeType: userMime, data: userData } },
           {
-            text: `IMAGE 1 = reference photo style. IMAGE 2 = person to feature.
+            text: `You are a portrait photographer. You have two images:
+IMAGE 1 = a reference post/design (ignore ALL text, graphics, buttons, logos in it — focus ONLY on the photographic elements: the person's pose, the lighting, the background scene, the color grading, the camera angle).
+IMAGE 2 = the person who needs a new photo.
 
-Create a NEW professional photo: same background scene, lighting, composition and pose as IMAGE 1, but featuring the person from IMAGE 2 (their face, hair, skin tone).
+YOUR TASK: Create a professional PORTRAIT PHOTOGRAPH of the person from IMAGE 2, matching:
+- Same pose/body position as the person in IMAGE 1
+- Same background environment/scene
+- Same lighting style and color grading
+- Same camera angle and framing
 
-ABSOLUTE RULE — ZERO TEXT: NEVER reproduce ANY text, letters, words, numbers, typography, watermarks, logos or written content from IMAGE 1. The output MUST be a clean photograph with ZERO text elements anywhere. If IMAGE 1 has text overlays, COMPLETELY IGNORE them — they are NOT part of the style. Output ONLY the photographic scene.
+CRITICAL RULES:
+1. Output ONLY a raw photograph — as if taken by a camera
+2. There must be ZERO text, ZERO letters, ZERO words, ZERO typography, ZERO graphics, ZERO buttons, ZERO overlays, ZERO watermarks anywhere in the output
+3. Do NOT create a "post" or "design" — create ONLY a photograph
+4. The image must look like an unedited photo straight from a camera
+5. If IMAGE 1 is a graphic design with text, extract ONLY the photographic style (lighting, pose, background) and ignore everything else
 
-Format: square 1080x1080. Cinematic quality.`
+Output: 1080x1080 square photograph. Cinematic quality. Clean photo ONLY.`
           }
         ]
       }],
@@ -736,15 +747,14 @@ Format: square 1080x1080. Cinematic quality.`
 
     clonedImageUrl = extractImage(imageResult)
   } catch (imgErr: unknown) {
-    // Retry with simpler prompt
+    // Retry with even simpler prompt focused purely on photography
     try {
       const retryResult = await imageModel.generateContent({
         contents: [{
           role: 'user',
           parts: [
-            { inlineData: { mimeType: refMime, data: refData } },
             { inlineData: { mimeType: userMime, data: userData } },
-            { text: `Take the visual style, background and lighting from image 1. Place the person from image 2 in the same scene and pose. Output ONLY a clean photograph — ABSOLUTELY NO text, letters, words, numbers, typography or watermarks anywhere in the image. 1080x1080.` }
+            { text: `Create a professional portrait photograph of this person. Studio lighting, clean background, cinematic quality. The person should be in a confident professional pose. Output ONLY a clean photograph — no text, no graphics, no overlays, no watermarks. Just a raw photo. 1080x1080 square.` }
           ]
         }],
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
