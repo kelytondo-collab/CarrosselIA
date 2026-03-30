@@ -93,6 +93,20 @@ function AppContent() {
         setCurrentProject({ ...project, current_post_data: postData })
         setView('post-preview')
         toast.success('Post importado do Luminae!')
+      } else if (tipo === 'reels_conexao') {
+        // Save phrases to localStorage — ReelsConexaoEditor reads on mount
+        const phrases = data.phrases || []
+        if (phrases.length > 0) {
+          localStorage.setItem('luminae_reels_import', JSON.stringify({
+            phrases,
+            recordingTip: data.recordingTip || '',
+            musicMood: data.musicMood || '',
+          }))
+          setView('reels-conexao')
+          toast.success(`${phrases.length} frases importadas do Luminae!`)
+        } else {
+          toast.error('Nenhuma frase encontrada no Reels Conexão')
+        }
       } else if (tipo === 'stories' && slides.length > 0) {
         const storySlides = slides.map((s: { headline?: string; subtitle?: string }, i: number) => ({
           id: i + 1,

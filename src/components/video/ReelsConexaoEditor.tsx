@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Download, Play, Loader2, Upload, X, Plus, Trash2, Clipboard, ArrowLeft } from 'lucide-react'
 import { renderReelsConexao } from '../../services/videoRenderer'
 import type { ReelsConexaoConfig, ReelsConexaoPhrase } from '../../services/videoRenderer'
@@ -35,7 +35,31 @@ export default function ReelsConexaoEditor() {
   const profile = getDefaultProfile()
 
   const [phrases, setPhrases] = useState<PhraseEntry[]>(DEFAULT_PHRASES)
+  const [recordingTip, setRecordingTip] = useState('')
+  const [musicMood, setMusicMood] = useState('')
   const [handle, setHandle] = useState(profile?.name ? `@${profile.name.toLowerCase().replace(/\s+/g, '')}` : '')
+
+  // Auto-import from Luminae via localStorage (set by App.tsx hash handler)
+  useEffect(() => {
+    const raw = localStorage.getItem('luminae_reels_import')
+    if (!raw) return
+    localStorage.removeItem('luminae_reels_import')
+    try {
+      const data = JSON.parse(raw)
+      const arr = data.phrases || []
+      if (arr.length > 0) {
+        const parsed: PhraseEntry[] = arr.map((item: Record<string, unknown>) => ({
+          phrase: String(item.phrase || ''),
+          keywords: Array.isArray(item.keywords) ? (item.keywords as string[]).join(',') : '',
+          arc: String(item.arc || 'verdade'),
+        }))
+        setPhrases(parsed)
+        if (data.recordingTip) setRecordingTip(String(data.recordingTip))
+        if (data.musicMood) setMusicMood(String(data.musicMood))
+        toast.success(`${parsed.length} frases carregadas do Luminae!`)
+      }
+    } catch { /* ignore parse errors */ }
+  }, [])
   const [duration, setDuration] = useState(30)
   const [fontScale, setFontScale] = useState(1.0)
   const [rendering, setRendering] = useState(false)
@@ -300,6 +324,24 @@ export default function ReelsConexaoEditor() {
             ))}
           </div>
         </div>
+
+        {/* Luminae Tips (shown when imported) */}
+        {(recordingTip || musicMood) && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-2xl border border-amber-200 dark:border-amber-800/30 p-4 space-y-2">
+            {recordingTip && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Dica de Gravacao</span>
+                <p className="text-sm text-amber-800 dark:text-amber-200 mt-0.5">{recordingTip}</p>
+              </div>
+            )}
+            {musicMood && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Mood Musical</span>
+                <p className="text-sm text-amber-800 dark:text-amber-200 mt-0.5">{musicMood}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Settings */}
         <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
