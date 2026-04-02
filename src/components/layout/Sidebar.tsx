@@ -1,4 +1,4 @@
-import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart } from 'lucide-react'
+import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart, Camera } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
@@ -17,6 +17,7 @@ const NAV_VIDEO = [
   { id: 'quote-video' as View, label: 'Video Citacao', icon: Video, desc: 'Reel/Feed' },
   { id: 'carousel-reel' as View, label: 'Carrossel Reel', icon: Clapperboard, desc: 'Auto-scroll' },
   { id: 'reels-conexao' as View, label: 'Reels Conexão', icon: Heart, desc: 'B-roll + Legendas' },
+  { id: 'reels-record' as View, label: 'Reels', icon: Camera, desc: 'Gravar + Filtro' },
 ]
 
 const NAV_BOTTOM = [

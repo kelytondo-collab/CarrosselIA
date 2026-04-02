@@ -527,6 +527,261 @@ export async function renderReelsConexao(config: ReelsConexaoConfig): Promise<Bl
   })
 }
 
+// ── Reels Record: overlay text on recorded video ──
+
+export interface ReelsOverlayConfig extends VideoConfig {
+  videoUrl: string         // blob URL of recorded video
+  overlayText?: string     // optional text overlay
+  handle?: string          // @username
+  fontFamily: string
+  fontSize: number
+  textColor: string
+}
+
+/**
+ * Render a recorded video with optional text overlay at the bottom.
+ * Preserves original audio.
+ */
+export async function renderReelsWithOverlay(config: ReelsOverlayConfig): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = config.width
+  canvas.height = config.height
+  const ctx = canvas.getContext('2d')!
+
+  const bgVideo = await loadVideo(config.videoUrl)
+  bgVideo.muted = false
+  bgVideo.currentTime = 0
+
+  // Audio capture
+  const audioCtx = new AudioContext()
+  const source = audioCtx.createMediaElementSource(bgVideo)
+  const audioDest = audioCtx.createMediaStreamDestination()
+  source.connect(audioDest)
+  source.connect(audioCtx.destination)
+
+  const canvasStream = canvas.captureStream(config.fps)
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioDest.stream.getAudioTracks(),
+  ])
+
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? 'video/webm;codecs=vp9,opus' : 'video/webm'
+
+  const recorder = new MediaRecorder(combinedStream, {
+    mimeType,
+    videoBitsPerSecond: 5_000_000,
+  })
+
+  const chunks: Blob[] = []
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
+
+  const totalFrames = Math.ceil((config.durationMs / 1000) * config.fps)
+
+  await bgVideo.play()
+
+  return new Promise((resolve) => {
+    recorder.onstop = () => {
+      bgVideo.pause()
+      bgVideo.src = ''
+      audioCtx.close()
+      resolve(new Blob(chunks, { type: 'video/webm' }))
+    }
+
+    recorder.start()
+
+    let frame = 0
+    const interval = setInterval(() => {
+      if (frame >= totalFrames || bgVideo.ended) {
+        clearInterval(interval)
+        recorder.stop()
+        return
+      }
+
+      // Draw video
+      drawMediaCover(ctx, bgVideo, config.width, config.height)
+
+      // Optional text overlay
+      if (config.overlayText) {
+        const gradH = config.height * 0.3
+        const grad = ctx.createLinearGradient(0, config.height - gradH, 0, config.height)
+        grad.addColorStop(0, 'rgba(0,0,0,0)')
+        grad.addColorStop(0.5, 'rgba(0,0,0,0.5)')
+        grad.addColorStop(1, 'rgba(0,0,0,0.8)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, config.height - gradH, config.width, gradH)
+
+        ctx.font = `900 ${config.fontSize}px ${config.fontFamily}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = config.textColor
+
+        const lines = wrapText(ctx, config.overlayText, config.width * 0.85)
+        const lineH = config.fontSize * 1.3
+        const textY = config.height - config.height * 0.12
+        const startY = textY - ((lines.length - 1) * lineH) / 2
+
+        lines.forEach((line, i) => {
+          ctx.fillText(line, config.width / 2, startY + i * lineH)
+        })
+      }
+
+      // Handle
+      if (config.handle) {
+        ctx.font = `500 ${config.fontSize * 0.4}px ${config.fontFamily}`
+        ctx.textAlign = 'center'
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'
+        ctx.fillText(config.handle, config.width / 2, config.height - 40)
+      }
+
+      frame++
+    }, 1000 / config.fps)
+  })
+}
+
+// ── Cover Image Generation ──
+
+export type CoverStyle = 'bold-hook' | 'minimal' | 'gradient' | 'editorial'
+
+export interface CoverConfig {
+  videoUrl: string         // blob URL to extract frame from
+  hookText: string
+  handle?: string
+  fontFamily: string
+  style: CoverStyle
+  accentColor?: string     // for gradient and editorial styles
+}
+
+/**
+ * Generate a cover image (1080x1920) from a video frame + hook text.
+ * Returns a PNG Blob.
+ */
+export async function generateCoverImage(config: CoverConfig): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1080
+  canvas.height = 1920
+  const ctx = canvas.getContext('2d')!
+
+  // Extract frame at 0.5s
+  const video = document.createElement('video')
+  video.src = config.videoUrl
+  video.muted = true
+  video.playsInline = true
+
+  await new Promise<void>((resolve, reject) => {
+    video.onloadeddata = () => {
+      video.currentTime = Math.min(0.5, video.duration || 0.5)
+    }
+    video.onseeked = () => resolve()
+    video.onerror = () => reject(new Error('Erro ao carregar video para capa'))
+    video.load()
+  })
+
+  const w = 1080
+  const h = 1920
+  const accent = config.accentColor || '#a855f7' // purple-500
+
+  if (config.style === 'gradient') {
+    // Full gradient, no video frame
+    const grad = ctx.createLinearGradient(0, 0, w * 0.3, h)
+    grad.addColorStop(0, accent)
+    grad.addColorStop(1, '#0f0a1a')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, w, h)
+  } else {
+    // Draw video frame as background
+    drawMediaCover(ctx, video, w, h)
+
+    if (config.style === 'bold-hook') {
+      // Strong dark overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'
+      ctx.fillRect(0, 0, w, h)
+    } else if (config.style === 'minimal') {
+      // Bottom gradient only
+      const grad = ctx.createLinearGradient(0, h * 0.5, 0, h)
+      grad.addColorStop(0, 'rgba(0,0,0,0)')
+      grad.addColorStop(1, 'rgba(0,0,0,0.85)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, w, h)
+    } else if (config.style === 'editorial') {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      ctx.fillRect(0, 0, w, h)
+    }
+  }
+
+  // Draw hook text
+  const pad = w * 0.08
+  const maxTextWidth = w - pad * 2
+
+  if (config.style === 'bold-hook' || config.style === 'gradient') {
+    // Large centered text
+    const fontSize = 72
+    ctx.font = `900 ${fontSize}px ${config.fontFamily}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#ffffff'
+
+    const lines = wrapText(ctx, config.hookText, maxTextWidth)
+    const lineH = fontSize * 1.2
+    const startY = h / 2 - ((lines.length - 1) * lineH) / 2
+
+    lines.forEach((line, i) => {
+      ctx.fillText(line, w / 2, startY + i * lineH)
+    })
+  } else if (config.style === 'minimal') {
+    // Smaller text at bottom
+    const fontSize = 54
+    ctx.font = `800 ${fontSize}px ${config.fontFamily}`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#ffffff'
+
+    const lines = wrapText(ctx, config.hookText, maxTextWidth)
+    const lineH = fontSize * 1.2
+    const startY = h - 200 - ((lines.length - 1) * lineH) / 2
+
+    lines.forEach((line, i) => {
+      ctx.fillText(line, pad, startY + i * lineH)
+    })
+  } else if (config.style === 'editorial') {
+    // Accent line on left + bold text
+    const fontSize = 64
+    const accentX = pad - 16
+    ctx.fillStyle = accent
+    ctx.fillRect(accentX, h * 0.35, 6, h * 0.3)
+
+    ctx.font = `900 ${fontSize}px ${config.fontFamily}`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#ffffff'
+
+    const lines = wrapText(ctx, config.hookText, maxTextWidth - 20)
+    const lineH = fontSize * 1.2
+    const startY = h / 2 - ((lines.length - 1) * lineH) / 2
+
+    lines.forEach((line, i) => {
+      ctx.fillText(line, pad + 10, startY + i * lineH)
+    })
+  }
+
+  // Handle at bottom
+  if (config.handle) {
+    ctx.font = `500 24px ${config.fontFamily}`
+    ctx.textAlign = 'center'
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.fillText(config.handle, w / 2, h - 60)
+  }
+
+  // Cleanup
+  video.src = ''
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob || new Blob())
+    }, 'image/png')
+  })
+}
+
 // ── Helpers ──
 
 function drawGradientBackground(ctx: CanvasRenderingContext2D, w: number, h: number, cssGradient: string) {

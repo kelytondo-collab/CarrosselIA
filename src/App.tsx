@@ -18,6 +18,7 @@ import StoriesPreview from './components/stories/StoriesPreview'
 import QuoteVideoEditor from './components/video/QuoteVideoEditor'
 import CarouselReelEditor from './components/video/CarouselReelEditor'
 import ReelsConexaoEditor from './components/video/ReelsConexaoEditor'
+import ReelsRecordEditor from './components/video/ReelsRecordEditor'
 import { getDefaultProfile, createSimpleProject, updateProjectCarousel, updateProjectPost, updateProjectStories } from './services/storageService'
 import toast from 'react-hot-toast'
 
@@ -107,6 +108,19 @@ function AppContent() {
         } else {
           toast.error('Nenhuma frase encontrada no Reels Conexão')
         }
+      } else if (tipo === 'reels_record') {
+        // Save hook text to localStorage — ReelsRecordEditor reads on mount
+        const hook = data.hook || caption.hook || ''
+        if (hook) {
+          localStorage.setItem('luminae_reels_record_import', JSON.stringify({
+            hook,
+            caption: caption.body || '',
+          }))
+          setView('reels-record')
+          toast.success('Hook importado do Luminae!')
+        } else {
+          toast.error('Nenhum hook encontrado para o Reels')
+        }
       } else if (tipo === 'stories' && slides.length > 0) {
         const storySlides = slides.map((s: { headline?: string; subtitle?: string }, i: number) => ({
           id: i + 1,
@@ -167,6 +181,7 @@ function AppContent() {
     'quote-video': <QuoteVideoEditor />,
     'carousel-reel': <CarouselReelEditor />,
     'reels-conexao': <ReelsConexaoEditor />,
+    'reels-record': <ReelsRecordEditor />,
   }
 
   return (
