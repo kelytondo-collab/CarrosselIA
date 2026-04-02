@@ -3,7 +3,7 @@ import JSZip from 'jszip'
 import { saveAs } from 'file-saver'
 import type { CarouselData } from '../types'
 
-export const exportSlideAsImage = async (el: HTMLElement, scale = 3): Promise<Blob> => {
+export const exportSlideAsImage = async (el: HTMLElement, scale = 3.6): Promise<Blob> => {
   const canvas = await html2canvas(el, {
     scale,
     useCORS: true,

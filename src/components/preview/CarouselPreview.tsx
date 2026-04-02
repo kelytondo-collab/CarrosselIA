@@ -160,17 +160,21 @@ export default function CarouselPreview() {
     const slide = slides[i]
     const sem = slide?.semanticType
 
-    // If slide has semantic type, find best matching config from sequence
+    // Semantic type only used for special roles (cover, cta, checklist)
+    // Content slides ALWAYS use positional mapping to preserve alternation
     if (sem) {
-      const roleMap: Record<string, StyleSlideConfig['role']> = {
-        capa: 'cover', dor: 'content', conteudo: 'content', lista: 'checklist', cta: 'cta',
+      const specialMap: Record<string, StyleSlideConfig['role']> = {
+        capa: 'cover', lista: 'checklist', cta: 'cta',
       }
-      const targetRole = roleMap[sem] || 'content'
-      const match = slideSeq.find(s => s.role === targetRole)
-      if (match) return match
+      const specialRole = specialMap[sem]
+      if (specialRole) {
+        const match = slideSeq.find(s => s.role === specialRole)
+        if (match) return match
+      }
+      // dor, conteudo → fall through to positional mapping below
     }
 
-    // Fallback: positional mapping
+    // Positional mapping — preserves design alternation (dark/light, photo/accent/white)
     if (i === 0) return slideSeq[0]
     if (i === slides.length - 1) return slideSeq[slideSeq.length - 1]
     const mid = slideSeq.slice(1, -1)
