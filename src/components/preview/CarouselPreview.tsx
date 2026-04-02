@@ -95,7 +95,7 @@ const DISP_W = 300
 const DISP_H = 375
 
 export default function CarouselPreview() {
-  const { setView, currentProject, currentCarousel, setCurrentCarousel, refreshProjects, apiKey, expertPhotoBase64 } = useApp()
+  const { setView, currentProject, currentCarousel, setCurrentCarousel, refreshProjects, expertPhotoBase64 } = useApp()
   const [tab, setTab] = useState<Tab>('slides')
   const PALETTES = buildPalettes()
   const FONTS = buildFonts()
@@ -244,7 +244,6 @@ export default function CarouselPreview() {
   }
 
   const genAllImages = async () => {
-    if (!apiKey) { toast.error('Configure sua chave Gemini nas Configurações'); return }
     const total = slides.length
     setGenAllProgress({ current: 0, total })
     const toastId = toast.loading(`Gerando imagens 0/${total}...`)
@@ -282,7 +281,6 @@ export default function CarouselPreview() {
   }
 
   const genImage = async (idx: number, prompt?: string, useExpertPhoto: boolean = false) => {
-    if (!apiKey) { toast.error('Configure sua chave Gemini nas Configurações'); return }
     let finalPrompt = prompt ?? slides[idx].visualPrompt
     // Save edited prompt to slide
     if (prompt && prompt !== slides[idx].visualPrompt) {

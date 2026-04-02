@@ -33,7 +33,7 @@ const inputCls = 'w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gra
 const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5'
 
 export default function InputSection() {
-  const { setView, setCurrentProject, setCurrentCarousel, refreshProjects, setIsGenerating, setGenerationPhase, setGenerationProgress, apiKey, setExpertPhotoBase64 } = useApp()
+  const { setView, setCurrentProject, setCurrentCarousel, refreshProjects, setIsGenerating, setGenerationPhase, setGenerationProgress, setExpertPhotoBase64 } = useApp()
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [inputMode, setInputMode] = useState<InputMode>('colar')
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -67,7 +67,7 @@ export default function InputSection() {
   }
 
   // ── LUMINAE IMPORT: Direct, no Gemini ──
-  const handleLuminaeImport = (data: LuminaeImportData) => {
+  const handleLuminaeImport = async (data: LuminaeImportData) => {
     const slides: SlideData[] = data.slides.map((s, i) => ({
       id: i + 1,
       headline: s.headline,
@@ -102,8 +102,8 @@ export default function InputSection() {
     }
 
     const projectName = form.projectName || `Luminae — ${data.slides[0]?.headline?.slice(0, 30) || 'Import'}`
-    const project = createProject({ ...form, projectName }, 'carousel')
-    updateProjectCarousel(project.id, carousel)
+    const project = await createProject({ ...form, projectName }, 'carousel')
+    await updateProjectCarousel(project.id, carousel)
     refreshProjects()
 
     setExpertPhotoBase64(form.expertPhotoBase64)
@@ -115,7 +115,6 @@ export default function InputSection() {
 
   // ── COLAR: Gemini FORMAT-ONLY ──
   const handleFormatText = async () => {
-    if (!apiKey) { toast.error('Configure sua chave Gemini API nas Configuracoes'); return }
     if (!form.baseText.trim()) { toast.error('Cole o conteudo para formatar'); return }
 
     setIsGenerating(true)
@@ -130,8 +129,8 @@ export default function InputSection() {
       })
 
       const projectName = form.projectName || `Formatado — ${form.baseText.slice(0, 30)}`
-      const project = createProject({ ...form, projectName }, 'carousel')
-      updateProjectCarousel(project.id, carousel)
+      const project = await createProject({ ...form, projectName }, 'carousel')
+      await updateProjectCarousel(project.id, carousel)
       refreshProjects()
 
       setExpertPhotoBase64(form.expertPhotoBase64)
@@ -151,10 +150,6 @@ export default function InputSection() {
 
   // ── CRIAR: Full Gemini generation (original behavior) ──
   const handleGenerate = async () => {
-    if (!apiKey) {
-      toast.error('Configure sua chave Gemini API nas Configuracoes')
-      return
-    }
     if (!form.theme.trim() || !form.product.trim()) {
       toast.error('Preencha o tema e o produto/servico')
       return
@@ -172,8 +167,8 @@ export default function InputSection() {
         toast.loading(phase, { id: toastId })
       }, defaultProfile?.voiceBlueprint)
 
-      const project = createProject({ ...form, projectName: form.projectName || `${form.theme} — ${form.product}` })
-      updateProjectCarousel(project.id, carousel)
+      const project = await createProject({ ...form, projectName: form.projectName || `${form.theme} — ${form.product}` })
+      await updateProjectCarousel(project.id, carousel)
       refreshProjects()
 
       setExpertPhotoBase64(form.expertPhotoBase64)

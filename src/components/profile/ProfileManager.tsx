@@ -40,7 +40,7 @@ const emptyProfile = (): Omit<SpecialistProfile, 'id' | 'created_at'> => ({
 })
 
 export default function ProfileManager() {
-  const { profiles, refreshProfiles, apiKey } = useApp()
+  const { profiles, refreshProfiles } = useApp()
   const [editing, setEditing] = useState<(Omit<SpecialistProfile, 'id' | 'created_at'> & { id?: string }) | null>(null)
   const [blueprintTab, setBlueprintTab] = useState<'guided' | 'direct'>('guided')
   const [guidedAnswers, setGuidedAnswers] = useState<Record<string, string>>({})
@@ -49,24 +49,24 @@ export default function ProfileManager() {
   const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5'
   const inputCls = 'w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-violet-400'
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing || !editing.name.trim()) { toast.error('Nome obrigatório'); return }
     const profile: SpecialistProfile = {
       ...editing,
       id: editing.id || crypto.randomUUID(),
       created_at: new Date().toISOString(),
     }
-    saveProfile(profile)
-    refreshProfiles()
+    await saveProfile(profile)
+    await refreshProfiles()
     setEditing(null)
     setGuidedAnswers({})
     toast.success('Perfil salvo!')
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Excluir este perfil?')) {
-      deleteProfile(id)
-      refreshProfiles()
+      await deleteProfile(id)
+      await refreshProfiles()
     }
   }
 
@@ -77,7 +77,6 @@ export default function ProfileManager() {
   }
 
   const handleGenerateBlueprint = async () => {
-    if (!apiKey) { toast.error('Configure sua chave Gemini API nas Configurações'); return }
     if (!editing) return
     const filledCount = Object.values(guidedAnswers).filter(v => v.trim()).length
     if (filledCount < 3) { toast.error('Responda pelo menos 3 perguntas para gerar o blueprint'); return }

@@ -1,11 +1,48 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { CarouselData, ProjectInputs, SlideData, Tone, Platform, PostData, PostInputs, StoriesData, StoriesInputs, StorySlide, Caption } from '../types'
+import { apiFetch } from './apiService'
 import { getDefaultProfile } from './storageService'
 
-let genAI: GoogleGenerativeAI | null = null
+// ── Proxy response type ──
 
-export const initGemini = (apiKey: string) => {
-  genAI = new GoogleGenerativeAI(apiKey)
+interface ProxyResponse {
+  parts: { text?: string; inlineData?: { mimeType: string; data: string } }[]
+}
+
+// ── Internal helpers ──
+
+async function geminiCall(opts: {
+  model?: string
+  systemInstruction?: string
+  contents: { role: string; parts: unknown[] }[]
+  generationConfig?: Record<string, unknown>
+}): Promise<ProxyResponse> {
+  return apiFetch<ProxyResponse>('/api/gemini/generate', {
+    method: 'POST',
+    body: JSON.stringify(opts),
+  })
+}
+
+function getText(res: ProxyResponse): string {
+  return res.parts.find(p => p.text)?.text?.trim() || ''
+}
+
+function getImage(res: ProxyResponse): string {
+  const p = res.parts.find(p => p.inlineData)
+  if (!p?.inlineData) throw new Error('Imagem nao gerada pelo modelo')
+  return `data:${p.inlineData.mimeType};base64,${p.inlineData.data}`
+}
+
+function parseJson(text: string): unknown {
+  return JSON.parse(text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim())
+}
+
+function stripDataUrl(dataUrl: string): string {
+  return dataUrl.replace(/^data:[^;]+;base64,/, '')
+}
+
+function getMimeType(dataUrl: string): string {
+  const m = dataUrl.match(/^data:([^;]+);/)
+  return m ? m[1] : 'image/jpeg'
 }
 
 const buildSystemPrompt = (tone: Tone, platform: Platform, niche: string, voiceBlueprint?: string): string => `
@@ -27,19 +64,14 @@ ${platform === 'linkedin' ? '- Tom profissional, dados, legenda longa, máx 5 ha
 Retorne APENAS JSON válido sem markdown, sem \`\`\`json, apenas o objeto JSON puro.
 ${voiceBlueprint ? `\nBLUEPRINT DA VOZ:\n---\n${voiceBlueprint}\n---` : ''}`
 
+// ── Carousel Copy (full generation) ──
+
 export const generateCarouselCopy = async (
   inputs: ProjectInputs,
   onProgress?: (phase: string, pct: number) => void,
   voiceBlueprint?: string
 ): Promise<CarouselData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
   onProgress?.('Analisando estratégia...', 15)
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: buildSystemPrompt(inputs.tone, inputs.platform, inputs.niche, voiceBlueprint),
-  })
 
   const prompt = `
 Gere um carrossel completo de ${inputs.slideCount} slides para ${inputs.platform}.
@@ -99,16 +131,16 @@ Os slides intermediários = uma ideia completa cada.
 
   onProgress?.('Gerando copy e estratégia...', 40)
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(inputs.tone, inputs.platform, inputs.niche, voiceBlueprint),
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
 
   onProgress?.('Processando resultado...', 80)
 
-  // Strip markdown if present
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText) as CarouselData
+  const parsed = parseJson(getText(res)) as CarouselData
 
-  // Validate strategy fields
   if (!parsed.strategy || typeof parsed.strategy !== 'object') {
     parsed.strategy = { persona: '', painPoint: '', desire: '', narrativePath: '', consciousnessLevel: '', niche: inputs.niche, hook: '' }
   } else {
@@ -121,7 +153,6 @@ Os slides intermediários = uma ideia completa cada.
     parsed.strategy.hook = parsed.strategy.hook || ''
   }
 
-  // Validate caption fields
   if (!parsed.caption || typeof parsed.caption !== 'object') {
     parsed.caption = { hook: '', body: '', cta: '', hashtags: '' }
   } else {
@@ -154,21 +185,7 @@ export const generateCarouselFormat = async (
   inputs: ProjectInputs,
   onProgress?: (phase: string, pct: number) => void,
 ): Promise<CarouselData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
   onProgress?.('Analisando conteúdo...', 15)
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
-O texto abaixo foi criado com a essência única do especialista.
-REGRAS ABSOLUTAS:
-1. NÃO reescreva NENHUMA frase. Use as palavras EXATAS do texto original.
-2. NÃO adicione ideias novas. NÃO "melhore" o texto. NÃO troque vocabulário.
-3. DISTRIBUA o conteúdo pelos slides mantendo a progressão lógica.
-4. Para a caption: EXTRAIA hook e CTA do próprio texto. NÃO invente.
-5. Retorne APENAS JSON válido sem markdown.`,
-  })
 
   const prompt = `
 TEXTO DO ESPECIALISTA (use EXATAMENTE estas palavras):
@@ -209,13 +226,22 @@ NÃO reescreva. NÃO melhore. DISTRIBUA.`
 
   onProgress?.('Formatando em slides...', 40)
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
+O texto abaixo foi criado com a essência única do especialista.
+REGRAS ABSOLUTAS:
+1. NÃO reescreva NENHUMA frase. Use as palavras EXATAS do texto original.
+2. NÃO adicione ideias novas. NÃO "melhore" o texto. NÃO troque vocabulário.
+3. DISTRIBUA o conteúdo pelos slides mantendo a progressão lógica.
+4. Para a caption: EXTRAIA hook e CTA do próprio texto. NÃO invente.
+5. Retorne APENAS JSON válido sem markdown.`,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
 
   onProgress?.('Processando resultado...', 80)
 
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText) as CarouselData
+  const parsed = parseJson(getText(res)) as CarouselData
 
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
     ...s,
@@ -242,15 +268,6 @@ export const regenerateCaptionSection = async (
   context: { niche: string; tone: Tone; theme?: string },
   voiceBlueprint?: string,
 ): Promise<string> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um copywriter expert para Instagram. Nicho: ${context.niche}. Tom: ${context.tone}.
-${voiceBlueprint ? `BLUEPRINT DA VOZ:\n${voiceBlueprint}` : ''}
-Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
-  })
-
   const sectionDesc: Record<string, string> = {
     hook: 'a PRIMEIRA LINHA da legenda — o gancho que para o scroll. Curta, direta, emocional.',
     body: 'o CORPO da legenda — com quebras de linha e emojis estratégicos. Desenvolva a ideia com clareza.',
@@ -270,8 +287,15 @@ ${context.theme ? `- Tema: ${context.theme}` : ''}
 Mantenha a coerência com o restante da legenda.
 Retorne SOMENTE o texto da seção "${section}", nada mais.`
 
-  const result = await model.generateContent(prompt)
-  return result.response.text().trim()
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um copywriter expert para Instagram. Nicho: ${context.niche}. Tom: ${context.tone}.
+${voiceBlueprint ? `BLUEPRINT DA VOZ:\n${voiceBlueprint}` : ''}
+Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
+
+  return getText(res)
 }
 
 // ── FORMAT-ONLY for Post ──
@@ -281,16 +305,7 @@ export const generatePostFormat = async (
   niche: string,
   onProgress?: (phase: string, pct: number) => void,
 ): Promise<PostData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
   onProgress?.('Formatando post...', 20)
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
-REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA o conteúdo em headline + subtitle + caption.
-Retorne APENAS JSON válido.`,
-  })
 
   const prompt = `
 TEXTO DO ESPECIALISTA:
@@ -316,10 +331,15 @@ EXTRAIA do texto (NÃO reescreva):
 
   onProgress?.('Processando...', 60)
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
+REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA o conteúdo em headline + subtitle + caption.
+Retorne APENAS JSON válido.`,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
+
+  const parsed = parseJson(getText(res)) as PostData
 
   onProgress?.('Pronto!', 100)
 
@@ -334,16 +354,7 @@ export const generateStoriesFormat = async (
   storyCount: number,
   onProgress?: (phase: string, pct: number) => void,
 ): Promise<StoriesData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
   onProgress?.('Formatando stories...', 20)
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
-REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA em stories verticais.
-Retorne APENAS JSON válido.`,
-  })
 
   const prompt = `
 TEXTO DO ESPECIALISTA:
@@ -371,10 +382,15 @@ Textos CURTOS e EXTRAÍDOS do original.`
 
   onProgress?.('Processando...', 60)
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
+REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA em stories verticais.
+Retorne APENAS JSON válido.`,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
+
+  const parsed = parseJson(getText(res)) as { slides: StorySlide[]; caption: Caption }
 
   const slides: StorySlide[] = (parsed.slides || []).map((s: StorySlide, i: number) => ({
     ...s,
@@ -387,15 +403,13 @@ Textos CURTOS e EXTRAÍDOS do original.`
   return { slides, caption: parsed.caption, generatedAt: new Date().toISOString() }
 }
 
+// ── Voice Blueprint ──
+
 export const generateVoiceBlueprint = async (
   answers: Record<string, string>,
   name: string,
   niche: string
 ): Promise<string> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-
   const prompt = `Você é um especialista em identidade comunicativa e copywriting.
 Com base nas respostas abaixo de ${name} (nicho: ${niche || 'não informado'}), crie um Blueprint da Voz estruturado e detalhado.
 
@@ -434,55 +448,31 @@ Estruture o Blueprint com estas 7 seções obrigatórias:
 
 Escreva de forma direta, específica e utilizável. Evite generalidades. Este documento será injetado em prompts de IA para calibrar o conteúdo gerado.`
 
-  const result = await model.generateContent(prompt)
-  return result.response.text().trim()
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
+
+  return getText(res)
 }
 
-// Extrai base64 puro (sem o prefixo data:image/...;base64,)
-function stripDataUrl(dataUrl: string): string {
-  return dataUrl.replace(/^data:[^;]+;base64,/, '')
-}
-
-// Detecta o mimeType de um data URL
-function getMimeType(dataUrl: string): string {
-  const match = dataUrl.match(/^data:([^;]+);/)
-  return match ? match[1] : 'image/jpeg'
-}
-
-// Extrai a imagem gerada da resposta Gemini
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractImage(result: any): string {
-  let imageUri = ''
-  for (const part of result.response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      imageUri = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
-      break
-    }
-  }
-  if (!imageUri) throw new Error('Imagem não gerada pelo modelo')
-  return imageUri
-}
+// ── Slide Image Generation ──
 
 export const generateSlideImage = async (
   visualPrompt: string,
   format: '1:1' | '9:16' | '4:5' = '4:5',
-  expertPhotoBase64?: string // Se fornecido → image-to-image mantendo o rosto
+  expertPhotoBase64?: string
 ): Promise<string> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini')
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' })
-
   const formatDesc = format === '9:16' ? 'vertical retrato (9:16)'
     : format === '4:5' ? 'vertical (4:5)'
     : 'quadrado (1:1)'
 
   if (expertPhotoBase64) {
-    // ── IMAGE-TO-IMAGE: mantém o rosto do expert, muda o cenário ──
     const mimeType = getMimeType(expertPhotoBase64)
     const base64 = stripDataUrl(expertPhotoBase64)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await model.generateContent({
+    const res = await geminiCall({
+      model: 'gemini-2.5-flash-image',
       contents: [{
         role: 'user',
         parts: [
@@ -505,14 +495,13 @@ REGRA ABSOLUTA: A imagem NÃO PODE conter NENHUMA letra, palavra, frase, número
           }
         ]
       }],
-      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
-    } as any)
+      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+    })
 
-    return extractImage(result)
+    return getImage(res)
   } else {
-    // ── TEXT-TO-IMAGE: sem foto de referência ──
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await model.generateContent({
+    const res = await geminiCall({
+      model: 'gemini-2.5-flash-image',
       contents: [{
         role: 'user',
         parts: [{
@@ -531,28 +520,21 @@ REGRA ABSOLUTA — PROIBIDO TEXTO NA IMAGEM:
 A imagem será usada como FUNDO para texto sobreposto depois — por isso precisa ser LIMPA, sem nenhum texto.`
         }]
       }],
-      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
-    } as any)
+      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+    })
 
-    return extractImage(result)
+    return getImage(res)
   }
 }
 
-// ── Post Estático ──
+// ── Post Estático (full generation) ──
 
 export const generatePostCopy = async (
   inputs: PostInputs,
   onProgress?: (phase: string, pct: number) => void,
   voiceBlueprint?: string
 ): Promise<PostData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
   onProgress?.('Criando post estático...', 20)
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: buildSystemPrompt(inputs.tone, 'instagram', inputs.niche, voiceBlueprint),
-  })
 
   const prompt = `
 Gere um POST ESTÁTICO para Instagram (formato quadrado 1080x1080).
@@ -582,10 +564,13 @@ O título deve ser CURTO e FORTE. O visual deve ser profissional e condizente co
 
   onProgress?.('Gerando copy...', 50)
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(inputs.tone, 'instagram', inputs.niche, voiceBlueprint),
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
+
+  const parsed = parseJson(getText(res)) as PostData
 
   onProgress?.('Pronto!', 100)
 
@@ -603,13 +588,11 @@ export const analyzeReference = async (
   niche: string,
   tone: Tone
 ): Promise<{ colors: string[]; layout: string; typography: string; mood: string; suggestion: string }> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini')
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
   const mimeType = getMimeType(imageBase64)
   const base64 = stripDataUrl(imageBase64)
 
-  const result = await model.generateContent({
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
     contents: [{
       role: 'user',
       parts: [
@@ -636,9 +619,7 @@ Retorne APENAS JSON:
     }],
   })
 
-  const text = result.response.text().trim()
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  return JSON.parse(jsonText)
+  return parseJson(getText(res)) as { colors: string[]; layout: string; typography: string; mood: string; suggestion: string }
 }
 
 export const generateFromReference = async (
@@ -649,13 +630,6 @@ export const generateFromReference = async (
   voiceBlueprint?: string,
   userContent?: string
 ): Promise<PostData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini')
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
-  })
-
   const contentBlock = userContent
     ? `\nIMPORTANTE: O usuario forneceu SEU PROPRIO conteudo. Use EXATAMENTE este texto como base para headline e subtitle. NAO reescreva, apenas formate para caber no post:\n"""\n${userContent}\n"""\n`
     : `\nTema: ${theme}\n`
@@ -684,11 +658,13 @@ Retorne APENAS JSON:
   "seoKeywords": ["kw1", "kw2"]
 }`
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
 
+  const parsed = parseJson(getText(res)) as PostData
   return { ...parsed, layout: 'minimal', generatedAt: new Date().toISOString() }
 }
 
@@ -702,22 +678,19 @@ export const clonePostVisual = async (
   tone: Tone,
   voiceBlueprint?: string
 ): Promise<PostData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini')
   if (!userPhotoBase64) throw new Error('Envie sua foto para clonar')
 
-  const imageModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' })
   const refMime = getMimeType(referenceBase64)
   const refData = stripDataUrl(referenceBase64)
   const userMime = getMimeType(userPhotoBase64)
   const userData = stripDataUrl(userPhotoBase64)
 
   // CLONE em 2 passos: (1) descrever referência → (2) gerar foto sem ver a referência
-  // Isso evita que o Gemini copie texto da referência na imagem gerada
   let clonedImageUrl: string
   try {
     // PASSO 1: Modelo de texto analisa a referência e extrai APENAS elementos fotográficos
-    const textModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-    const descResult = await textModel.generateContent({
+    const descRes = await geminiCall({
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [
@@ -740,11 +713,12 @@ Output ONLY the description paragraph, nothing else. Be very specific about colo
       }],
     })
 
-    const photoDescription = descResult.response?.text?.() || 'Professional portrait, confident pose, dark background, warm cinematic lighting, half-body shot'
+    const photoDescription = getText(descRes) || 'Professional portrait, confident pose, dark background, warm cinematic lighting, half-body shot'
     console.log('[CLONE] Photo description:', photoDescription.slice(0, 200))
 
     // PASSO 2: Gerar foto da pessoa do usuário baseado na DESCRIÇÃO (sem ver a referência)
-    const imageResult = await imageModel.generateContent({
+    const imageRes = await geminiCall({
+      model: 'gemini-2.5-flash-image',
       contents: [{
         role: 'user',
         parts: [
@@ -766,14 +740,15 @@ Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or gr
           }
         ]
       }],
-      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
-    } as any)
+      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+    })
 
-    clonedImageUrl = extractImage(imageResult)
+    clonedImageUrl = getImage(imageRes)
   } catch (imgErr: unknown) {
     // Retry with simple prompt (no reference at all)
     try {
-      const retryResult = await imageModel.generateContent({
+      const retryRes = await geminiCall({
+        model: 'gemini-2.5-flash-image',
         contents: [{
           role: 'user',
           parts: [
@@ -781,9 +756,9 @@ Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or gr
             { text: `Create a professional portrait photograph of this person. Dark background, warm cinematic lighting, confident professional pose, half-body shot. Output ONLY a clean photograph — absolutely no text, no graphics, no overlays, no watermarks. Just a raw photo. 1080x1080 square.` }
           ]
         }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,
-      } as any)
-      clonedImageUrl = extractImage(retryResult)
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+      })
+      clonedImageUrl = getImage(retryRes)
     } catch (retryErr: unknown) {
       const msg = retryErr instanceof Error ? retryErr.message : String(retryErr)
       console.error('[CLONE] Erro ao gerar imagem:', msg)
@@ -802,27 +777,19 @@ Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or gr
     fontStyle: 'bold sans-serif',
   }
 
-  // Step 2: Split user text — headline = first line, subtitle = ALL the rest (card auto-scales font)
+  // Split user text — headline = first line, subtitle = ALL the rest
   const lines = userText.split('\n').filter(l => l.trim())
-  // Headline: first line (or first sentence up to 60 chars)
   let headline = lines[0] || userText
   if (headline.length > 60) {
     const cut = headline.lastIndexOf(' ', 60)
     headline = headline.slice(0, cut > 20 ? cut : 60)
   }
-  // Subtitle: EVERYTHING else — the card will auto-scale the font to fit
   const subtitle = lines.length > 1
     ? lines.slice(1).join('\n')
     : userText.slice(headline.length).trim()
-  // Everything that didn't fit on the card goes to caption body
   const overflowText = userText.replace(headline, '').replace(subtitle, '').trim()
 
-  // Generate caption that includes the overflow text
-  const textModel = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
-  })
-
+  // Generate caption
   const captionPrompt = `
 Gere a legenda (caption) para um post Instagram.
 O CARD mostra: "${headline}" + "${subtitle}"
@@ -841,12 +808,14 @@ Retorne APENAS JSON:
   "hashtags": "#h1 #h2 ... (20-30)"
 }`
 
-  let caption = { hook: headline, body: overflowText || subtitle, cta: '', hashtags: '' }
+  let caption: Caption = { hook: headline, body: overflowText || subtitle, cta: '', hashtags: '' }
   try {
-    const captionResult = await textModel.generateContent(captionPrompt)
-    const captionText = captionResult.response.text().trim()
-    const jsonText = captionText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-    const parsed = JSON.parse(jsonText)
+    const captionRes = await geminiCall({
+      model: 'gemini-2.5-flash',
+      systemInstruction: buildSystemPrompt(tone, 'instagram', niche, voiceBlueprint),
+      contents: [{ role: 'user', parts: [{ text: captionPrompt }] }],
+    })
+    const parsed = parseJson(getText(captionRes)) as Caption
     caption = { hook: parsed.hook || headline, body: parsed.body || subtitle, cta: parsed.cta || '', hashtags: parsed.hashtags || '' }
   } catch { /* use defaults */ }
 
@@ -859,7 +828,6 @@ Retorne APENAS JSON:
     text: style.textHex || '#ffffff',
   }
 
-  // Map font style to available font
   const fs = (style.fontStyle || '').toLowerCase()
   const cloneFont = fs.includes('serif') && !fs.includes('sans') ? 'serif'
     : fs.includes('manuscri') || fs.includes('script') ? 'script'
@@ -878,21 +846,14 @@ Retorne APENAS JSON:
   }
 }
 
-// ── Stories ──
+// ── Stories (full generation) ──
 
 export const generateStoriesCopy = async (
   inputs: StoriesInputs,
   onProgress?: (phase: string, pct: number) => void,
   voiceBlueprint?: string
 ): Promise<StoriesData> => {
-  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
-
   onProgress?.('Criando stories...', 20)
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: buildSystemPrompt(inputs.tone, 'instagram', inputs.niche, voiceBlueprint),
-  })
 
   const typesDesc = inputs.types.map(t =>
     t === 'content' ? 'conteúdo educativo/inspirador' :
@@ -943,10 +904,13 @@ ${inputs.baseText ? `\nCONTEÚDO BASE (use como referência para criar os storie
 
   onProgress?.('Gerando stories...', 50)
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text().trim()
-  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const res = await geminiCall({
+    model: 'gemini-2.5-flash',
+    systemInstruction: buildSystemPrompt(inputs.tone, 'instagram', inputs.niche, voiceBlueprint),
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  })
+
+  const parsed = parseJson(getText(res)) as { slides: StorySlide[]; caption: Caption }
 
   const slides: StorySlide[] = (parsed.slides || []).map((s: StorySlide, i: number) => ({
     ...s,

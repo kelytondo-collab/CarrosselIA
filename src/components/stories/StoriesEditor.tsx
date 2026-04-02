@@ -27,7 +27,7 @@ const STORY_TYPES: { id: StoryType; label: string; emoji: string; desc: string }
 type EditorMode = 'luminae' | 'criar'
 
 export default function StoriesEditor() {
-  const { setView, setCurrentProject, apiKey, setIsGenerating, setGenerationPhase, setGenerationProgress, refreshProjects } = useApp()
+  const { setView, setCurrentProject, setIsGenerating, setGenerationPhase, setGenerationProgress, refreshProjects } = useApp()
   const defaultProfile = getDefaultProfile()
 
   const [editorMode, setEditorMode] = useState<EditorMode>('criar')
@@ -67,8 +67,8 @@ export default function StoriesEditor() {
         caption: { ...parsed.caption, hashtags: parsed.caption.hashtags || '' },
         generatedAt: new Date().toISOString(),
       }
-      const project = createSimpleProject(`Luminae Stories: ${parsed.slides[0].headline.slice(0, 25)}`, parsed.slides[0].headline, 'stories')
-      updateProjectStories(project.id, storiesData)
+      const project = await createSimpleProject(`Luminae Stories: ${parsed.slides[0].headline.slice(0, 25)}`, parsed.slides[0].headline, 'stories')
+      await updateProjectStories(project.id, storiesData)
       refreshProjects()
       setCurrentProject({ ...project, current_stories_data: storiesData })
       setView('stories-preview' as View)
@@ -77,8 +77,6 @@ export default function StoriesEditor() {
     }
 
     // Fallback: FORMAT mode
-    if (!apiKey) { toast.error('Configure sua chave Gemini'); return }
-
     setIsGenerating(true)
     setGenerationProgress(0)
     const toastId = toast.loading('Formatando stories...')
@@ -89,8 +87,8 @@ export default function StoriesEditor() {
         setGenerationProgress(pct)
         toast.loading(phase, { id: toastId })
       })
-      const project = createSimpleProject(`Luminae Stories`, '', 'stories')
-      updateProjectStories(project.id, storiesData)
+      const project = await createSimpleProject(`Luminae Stories`, '', 'stories')
+      await updateProjectStories(project.id, storiesData)
       refreshProjects()
       setCurrentProject({ ...project, current_stories_data: storiesData })
       setView('stories-preview' as View)
@@ -106,7 +104,6 @@ export default function StoriesEditor() {
 
   // ── CREATE FROM SCRATCH ──
   const handleGenerate = async () => {
-    if (!apiKey) { toast.error('Configure sua chave Gemini nas Configuracoes'); return }
     if (!theme.trim()) { toast.error('Informe o tema'); return }
     if (types.length === 0) { toast.error('Selecione pelo menos um tipo'); return }
 
@@ -122,8 +119,8 @@ export default function StoriesEditor() {
         toast.loading(phase, { id: toastId })
       }, defaultProfile?.voiceBlueprint)
 
-      const project = createSimpleProject(`Stories: ${theme}`, theme, 'stories')
-      updateProjectStories(project.id, storiesData)
+      const project = await createSimpleProject(`Stories: ${theme}`, theme, 'stories')
+      await updateProjectStories(project.id, storiesData)
       refreshProjects()
 
       setCurrentProject({ ...project, current_stories_data: storiesData })

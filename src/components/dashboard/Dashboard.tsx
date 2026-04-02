@@ -24,23 +24,23 @@ const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
 function ProjectCard({ project, onOpen, onRefresh }: { project: Project; onOpen: () => void; onRefresh: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const handleFavorite = (e: React.MouseEvent) => {
+  const handleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    toggleFavorite(project.id)
+    await toggleFavorite(project.id)
     onRefresh()
   }
 
-  const handleArchive = (e: React.MouseEvent) => {
+  const handleArchive = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    archiveProject(project.id)
+    await archiveProject(project.id)
     onRefresh()
     setMenuOpen(false)
   }
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (confirm('Excluir este projeto?')) {
-      deleteProject(project.id)
+      await deleteProject(project.id)
       onRefresh()
     }
     setMenuOpen(false)

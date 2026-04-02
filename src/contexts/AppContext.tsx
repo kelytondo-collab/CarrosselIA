@@ -1,10 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import type { Project, CarouselData, SpecialistProfile } from '../types'
-import { loadDarkMode, saveDarkMode, loadApiKey, getProjects, getProfiles, saveApiKey } from '../services/storageService'
-import { initGemini } from '../services/geminiService'
+import { loadDarkMode, saveDarkMode, getProfiles, fetchProfiles, fetchProjects } from '../services/storageService'
 
-export type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel' | 'reels-conexao'
+export type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel' | 'reels-conexao' | 'creator-dashboard' | 'referral'
 
 interface AppCtx {
   view: View
@@ -14,13 +13,11 @@ interface AppCtx {
   currentCarousel: CarouselData | null
   setCurrentCarousel: (c: CarouselData | null) => void
   projects: Project[]
-  refreshProjects: () => void
+  refreshProjects: () => Promise<void>
   profiles: SpecialistProfile[]
-  refreshProfiles: () => void
+  refreshProfiles: () => Promise<void>
   isDark: boolean
   toggleDark: () => void
-  apiKey: string
-  setApiKey: (k: string) => void
   isGenerating: boolean
   setIsGenerating: (v: boolean) => void
   generationPhase: string
@@ -40,7 +37,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [projects, setProjects] = useState<Project[]>([])
   const [profiles, setProfiles] = useState<SpecialistProfile[]>([])
   const [isDark, setIsDark] = useState(loadDarkMode)
-  const [apiKey, setApiKeyState] = useState(loadApiKey)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationPhase, setGenerationPhase] = useState('')
   const [generationProgress, setGenerationProgress] = useState(0)
@@ -52,22 +48,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [isDark])
 
   useEffect(() => {
-    if (apiKey) initGemini(apiKey)
-  }, [apiKey])
-
-  useEffect(() => {
     refreshProjects()
     refreshProfiles()
-    // Load expert photo from default profile
-    const dp = getProfiles().find(p => p.is_default) || getProfiles()[0]
-    if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
   }, [])
 
-  const refreshProjects = () => setProjects(getProjects())
-  const refreshProfiles = () => {
-    const updated = getProfiles()
+  const refreshProjects = async () => {
+    const updated = await fetchProjects()
+    setProjects(updated)
+  }
+
+  const refreshProfiles = async () => {
+    // Fast: read from localStorage cache first
+    const cached = getProfiles()
+    if (cached.length > 0) {
+      setProfiles(cached)
+      const dp = cached.find(p => p.is_default) || cached[0]
+      if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
+    }
+    // Then fetch from API (updates localStorage + state)
+    const updated = await fetchProfiles()
     setProfiles(updated)
-    // Keep expert photo in sync with default profile
     const dp = updated.find(p => p.is_default) || updated[0]
     if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
   }
@@ -78,12 +78,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     saveDarkMode(next)
   }
 
-  const setApiKey = (k: string) => {
-    setApiKeyState(k)
-    saveApiKey(k)
-    if (k) initGemini(k)
-  }
-
   return (
     <Ctx.Provider value={{
       view, setView,
@@ -92,7 +86,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       projects, refreshProjects,
       profiles, refreshProfiles,
       isDark, toggleDark,
-      apiKey, setApiKey,
       isGenerating, setIsGenerating,
       generationPhase, setGenerationPhase,
       generationProgress, setGenerationProgress,
