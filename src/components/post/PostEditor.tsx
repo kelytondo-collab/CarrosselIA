@@ -20,7 +20,7 @@ const TONES: { id: Tone; label: string; emoji: string }[] = [
 ]
 
 export default function PostEditor() {
-  const { currentProject, setView, setCurrentProject, setIsGenerating, setGenerationPhase, setGenerationProgress, refreshProjects } = useApp()
+  const { currentProject, setView, setCurrentProject, apiKey, setIsGenerating, setGenerationPhase, setGenerationProgress, refreshProjects } = useApp()
   const defaultProfile = getDefaultProfile()
 
   // Pre-fill from existing project when coming back from preview
@@ -41,7 +41,7 @@ export default function PostEditor() {
   const labelCls = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5'
 
   // ── LUMINAE IMPORT ──
-  const handleLuminaeImport = async () => {
+  const handleLuminaeImport = () => {
     if (!luminaeText.trim()) { toast.error('Cole o conteudo do Luminae'); return }
 
     const parsed = parseLuminaeContent(luminaeText)
@@ -54,8 +54,8 @@ export default function PostEditor() {
         layout: 'minimal',
         generatedAt: new Date().toISOString(),
       }
-      const project = await createSimpleProject(`Luminae: ${postData.headline.slice(0, 30)}`, postData.headline, 'post')
-      await updateProjectPost(project.id, postData)
+      const project = createSimpleProject(`Luminae: ${postData.headline.slice(0, 30)}`, postData.headline, 'post')
+      updateProjectPost(project.id, postData)
       refreshProjects()
       setCurrentProject({ ...project, current_post_data: postData })
       setView('post-preview' as View)
@@ -68,6 +68,7 @@ export default function PostEditor() {
   }
 
   const handleFormatPost = async () => {
+    if (!apiKey) { toast.error('Configure sua chave Gemini'); return }
     if (!luminaeText.trim()) { toast.error('Cole o conteudo'); return }
 
     setIsGenerating(true)
@@ -80,8 +81,8 @@ export default function PostEditor() {
         setGenerationProgress(pct)
         toast.loading(phase, { id: toastId })
       })
-      const project = await createSimpleProject(`Formatado: ${postData.headline.slice(0, 30)}`, postData.headline, 'post')
-      await updateProjectPost(project.id, postData)
+      const project = createSimpleProject(`Formatado: ${postData.headline.slice(0, 30)}`, postData.headline, 'post')
+      updateProjectPost(project.id, postData)
       refreshProjects()
       setCurrentProject({ ...project, current_post_data: postData })
       setView('post-preview' as View)
@@ -96,6 +97,7 @@ export default function PostEditor() {
   }
 
   const handleCreate = async () => {
+    if (!apiKey) { toast.error('Configure sua chave Gemini nas Configuracoes'); return }
     if (!theme.trim()) { toast.error('Informe o tema do post'); return }
 
     setIsGenerating(true)
@@ -110,8 +112,8 @@ export default function PostEditor() {
         toast.loading(phase, { id: toastId })
       }, defaultProfile?.voiceBlueprint)
 
-      const project = await createSimpleProject(theme, theme, 'post')
-      await updateProjectPost(project.id, postData)
+      const project = createSimpleProject(theme, theme, 'post')
+      updateProjectPost(project.id, postData)
       refreshProjects()
 
       setCurrentProject({ ...project, current_post_data: postData })

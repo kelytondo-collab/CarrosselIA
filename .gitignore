@@ -24,8 +24,3 @@ dist-ssr
 *.sw?
 
 .vercel
-
-# Server
-server/.env
-server/data/
-server/node_modules

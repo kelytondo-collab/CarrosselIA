@@ -1,12 +1,10 @@
-import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Layers, Square, Film, Video, Clapperboard, Heart, BarChart3, Gift, LogOut } from 'lucide-react'
+import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
-import { useAuth } from '../../contexts/AuthContext'
 import type { View } from '../../contexts/AppContext'
 import { cn } from '../../utils/cn'
 
 const NAV_MAIN = [
   { id: 'dashboard' as View, label: 'Projetos', icon: LayoutDashboard },
-  { id: 'creator-dashboard' as View, label: 'Performance', icon: BarChart3 },
 ]
 
 const NAV_CREATE = [
@@ -22,9 +20,8 @@ const NAV_VIDEO = [
 ]
 
 const NAV_BOTTOM = [
-  { id: 'referral' as View, label: 'Indicar', icon: Gift },
   { id: 'profiles' as View, label: 'Perfis', icon: User },
-  { id: 'settings' as View, label: 'Configuracoes', icon: Settings },
+  { id: 'settings' as View, label: 'Configurações', icon: Settings },
 ]
 
 interface Props {
@@ -32,8 +29,7 @@ interface Props {
 }
 
 export default function Sidebar({ onClose }: Props) {
-  const { view, setView, isDark, toggleDark } = useApp()
-  const { user, logout } = useAuth()
+  const { view, setView, isDark, toggleDark, apiKey } = useApp()
 
   const go = (v: View) => { setView(v); onClose?.() }
 
@@ -145,42 +141,29 @@ export default function Sidebar({ onClose }: Props) {
         ))}
       </nav>
 
-      {/* User info */}
-      {user && (
-        <div className="px-4 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-xs">
-            <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="font-medium text-gray-700 dark:text-gray-300 truncate">{user.name}</p>
-              <p className="text-gray-400 truncate">{user.plan_label}</p>
-            </div>
-          </div>
+      {/* API key status */}
+      <div className="px-4 pb-2">
+        <div className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium',
+          apiKey
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+            : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
+        )}>
+          <Zap size={12} />
+          {apiKey ? 'Gemini conectado' : 'Configure sua chave API'}
         </div>
-      )}
+      </div>
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
-        <span className="text-xs text-gray-400">v3.0</span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={toggleDark}
-            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-            title={isDark ? 'Modo claro' : 'Modo escuro'}
-          >
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          {user && (
-            <button
-              onClick={logout}
-              className="p-2 rounded-lg text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-              title="Sair"
-            >
-              <LogOut size={16} />
-            </button>
-          )}
-        </div>
+        <span className="text-xs text-gray-400">v2.0</span>
+        <button
+          onClick={toggleDark}
+          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+          title={isDark ? 'Modo claro' : 'Modo escuro'}
+        >
+          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
     </aside>
   )

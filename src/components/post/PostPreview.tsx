@@ -79,7 +79,7 @@ function getProfileFont() {
 const SIZE = 360
 
 export default function PostPreview() {
-  const { currentProject, setView, expertPhotoBase64, refreshProjects } = useApp()
+  const { currentProject, setView, apiKey, expertPhotoBase64, refreshProjects } = useApp()
   const postData = currentProject?.current_post_data
   const profile = getDefaultProfile()
   const logo = profile?.brandKit?.logo
@@ -154,6 +154,7 @@ export default function PostPreview() {
   postRef.current = post
 
   const genImage = async (useExpertPhoto: boolean) => {
+    if (!apiKey) { toast.error('Configure chave Gemini'); return }
     if (useExpertPhoto && !expertPhotoBase64) {
       toast.error('Configure sua foto no Perfil primeiro (menu lateral > Perfis)')
       return

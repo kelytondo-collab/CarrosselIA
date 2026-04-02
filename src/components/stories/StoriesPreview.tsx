@@ -72,7 +72,7 @@ const DISP_W = 216
 const DISP_H = 384
 
 export default function StoriesPreview() {
-  const { currentProject, setView, expertPhotoBase64, refreshProjects } = useApp()
+  const { currentProject, setView, apiKey, expertPhotoBase64, refreshProjects } = useApp()
   const storiesData = currentProject?.current_stories_data
   const profile = getDefaultProfile()
   const logo = profile?.brandKit?.logo
@@ -122,6 +122,7 @@ export default function StoriesPreview() {
   }
 
   const genImage = async (idx: number, useExpertPhoto: boolean) => {
+    if (!apiKey) { toast.error('Configure chave Gemini'); return }
     setGeneratingImg(prev => new Set([...prev, idx]))
     const label = useExpertPhoto ? 'foto expert' : 'fundo'
     const toastId = toast.loading(`Gerando ${label} story ${idx + 1}...`)
