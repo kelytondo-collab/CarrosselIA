@@ -65,10 +65,10 @@ Retorne JSON com esta estrutura exata:
     }
   ],
   "caption": {
-    "hook": "primeira linha que para o scroll",
-    "body": "corpo com quebras de linha e emojis estratégicos",
+    "hook": "1 frase curta e direta que para o scroll (máx 15 palavras)",
+    "body": "2-3 frases curtas que COMPLEMENTAM os slides sem repetir o conteúdo deles. Máx 50 palavras. Sem emojis excessivos.",
     "cta": "Comenta [PALAVRA] que te envio [BENEFÍCIO]",
-    "hashtags": "#hashtag1 #hashtag2 ...",
+    "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível do carrossel"
   },
   "manychat": {
@@ -95,6 +95,8 @@ ${inputs.baseText ? `\nCONTEÚDO BASE (use como referência principal — extrai
 O slide 1 deve ser a CAPA com gancho poderoso.
 O slide ${inputs.slideCount} deve ser o FECHAMENTO com CTA emocional.
 Os slides intermediários = uma ideia completa cada.
+
+REGRA DA LEGENDA: A legenda NÃO repete o conteúdo dos slides. Ela é CURTA (máx 4-5 linhas), complementa com um insight rápido e fecha com CTA direto. O conteúdo principal já está nos slides — a legenda só puxa pra ação.
 `
 
   onProgress?.('Gerando copy e estratégia...', 40)
@@ -194,10 +196,10 @@ Retorne JSON:
     { "id": 1, "headline": "frase EXATA do texto", "subtitle": "complemento EXATO do texto", "visualPrompt": "descrição visual", "emotion": "emoção" }
   ],
   "caption": {
-    "hook": "EXTRAIA do texto — primeira frase mais impactante",
-    "body": "EXTRAIA do texto — corpo principal",
-    "cta": "EXTRAIA do texto — chamada para ação",
-    "hashtags": "#hashtag1 #hashtag2 ...",
+    "hook": "EXTRAIA do texto — 1 frase curta e impactante (máx 15 palavras)",
+    "body": "2-3 frases curtas que COMPLEMENTAM sem repetir os slides. Máx 50 palavras.",
+    "cta": "EXTRAIA do texto — chamada para ação direta e curta",
+    "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível"
   },
   "manychat": { "keyword": "", "flow1": "", "flow2": "", "flow3": "" },
@@ -205,7 +207,8 @@ Retorne JSON:
 }
 
 IMPORTANTE: O slide 1 = capa (hook mais forte do texto). Slide ${inputs.slideCount} = fechamento/CTA do texto.
-NÃO reescreva. NÃO melhore. DISTRIBUA.`
+NÃO reescreva. NÃO melhore. DISTRIBUA.
+REGRA DA LEGENDA: Legenda CURTA (máx 4-5 linhas). NÃO repita o que está nos slides. Só complementa com insight rápido + CTA direto.`
 
   onProgress?.('Formatando em slides...', 40)
 
@@ -252,10 +255,10 @@ Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
   })
 
   const sectionDesc: Record<string, string> = {
-    hook: 'a PRIMEIRA LINHA da legenda — o gancho que para o scroll. Curta, direta, emocional.',
-    body: 'o CORPO da legenda — com quebras de linha e emojis estratégicos. Desenvolva a ideia com clareza.',
-    cta: 'a CHAMADA PARA AÇÃO — o que a pessoa deve fazer. Ex: "Comenta [PALAVRA] que te envio..."',
-    hashtags: '20-30 HASHTAGS relevantes para o nicho, separadas por espaço.',
+    hook: 'a PRIMEIRA LINHA da legenda — 1 frase curta que para o scroll (máx 15 palavras).',
+    body: 'o CORPO da legenda — 2-3 frases CURTAS que complementam sem repetir os slides. Máx 50 palavras. Direto ao ponto.',
+    cta: 'a CHAMADA PARA AÇÃO — curta e direta. Ex: "Comenta [PALAVRA] que te envio..."',
+    hashtags: '10-15 HASHTAGS relevantes para o nicho, separadas por espaço.',
   }
 
   const prompt = `
@@ -824,21 +827,23 @@ Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or gr
   })
 
   const captionPrompt = `
-Gere a legenda (caption) para um post Instagram.
-O CARD mostra: "${headline}" + "${subtitle}"
-O texto COMPLETO do especialista é: "${userText.slice(0, 500)}"
+Gere a legenda (caption) CURTA para um post Instagram.
+O CARD já mostra: "${headline}" + "${subtitle}"
 
-A legenda deve:
-1. Usar como HOOK uma frase impactante baseada no tema
-2. No BODY incluir o conteudo completo do especialista (o que nao coube no card)
-3. Fechar com CTA e hashtags
+A legenda NÃO repete o que está no card. Ela COMPLEMENTA com um insight rápido e chama pra ação.
+
+Regras:
+1. HOOK: 1 frase curta e direta (máx 15 palavras)
+2. BODY: 2-3 frases que complementam SEM repetir o card. Máx 50 palavras. Sem emojis excessivos.
+3. CTA: chamada para ação curta e direta
+4. Máx 15 hashtags
 
 Retorne APENAS JSON:
 {
-  "hook": "primeira linha impactante",
-  "body": "corpo com o conteudo completo + emojis + quebras de linha",
+  "hook": "frase curta que para o scroll",
+  "body": "2-3 frases complementares e diretas",
   "cta": "chamada para ação",
-  "hashtags": "#h1 #h2 ... (20-30)"
+  "hashtags": "#h1 #h2 ... (máx 15)"
 }`
 
   let caption = { hook: headline, body: overflowText || subtitle, cta: '', hashtags: '' }
