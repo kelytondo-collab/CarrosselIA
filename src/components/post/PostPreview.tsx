@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
-import { ArrowLeft, Download, Wand2, Palette, Type, Image, RefreshCw, Pencil } from 'lucide-react'
+import { ArrowLeft, Download, Wand2, Palette, Type, Image, RefreshCw, Pencil, Instagram } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import type { ColorPalette, LayoutType, PostData, Caption } from '../../types'
@@ -8,6 +8,7 @@ import { exportSlideAsImage } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
 import { getDefaultProfile, updateProjectPost } from '../../services/storageService'
 import CaptionEditor from '../caption/CaptionEditor'
+import InstagramPublishDrawer from '../shared/InstagramPublishDrawer'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -121,6 +122,7 @@ export default function PostPreview() {
   const [fontScale, setFontScale] = useState(1.0)
 
   const cardRef = useRef<HTMLDivElement>(null)
+  const [showPublish, setShowPublish] = useState(false)
 
   if (!post) {
     return (
@@ -307,6 +309,10 @@ export default function PostPreview() {
           <button onClick={() => setView('post-editor' as View)} className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 hover:border-violet-400 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-semibold transition-all">
             <Pencil size={14} /> Voltar ao Editor
           </button>
+          <button onClick={() => setShowPublish(true)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all">
+            <Instagram size={15} />
+            <span className="hidden sm:inline">Publicar</span>
+          </button>
           <button onClick={download} disabled={downloading} className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
             <Download size={15} /> Download PNG
           </button>
@@ -404,6 +410,15 @@ export default function PostPreview() {
           </div>
         </div>
       </div>
+
+      <InstagramPublishDrawer
+        open={showPublish}
+        onClose={() => setShowPublish(false)}
+        mode="single"
+        caption={[post.caption.hook, post.caption.body, post.caption.cta, post.caption.hashtags].filter(Boolean).join('\n\n')}
+        slideRefs={null}
+        singleRef={cardRef}
+      />
     </div>
   )
 }

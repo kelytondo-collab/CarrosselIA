@@ -1,3 +1,15 @@
+// ── Auth types ──
+export interface User {
+  id: string
+  email: string
+  name: string
+}
+
+export interface InstagramConnection {
+  username: string
+  expiresAt: string
+}
+
 export type Platform = 'instagram' | 'linkedin' | 'pinterest' | 'threads'
 export type Tone = 'profissional' | 'descontraído' | 'inspirador' | 'urgente' | 'educativo' | 'provocador' | 'afetuoso'
 export type Format = '1:1' | '9:16' | '4:5'

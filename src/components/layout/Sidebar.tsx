@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart, Camera, ChevronDown, Check } from 'lucide-react'
+import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart, Camera, ChevronDown, Check, LogOut } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import { getDefaultProfile, saveProfile } from '../../services/storageService'
+import { clearAuth } from '../../services/apiService'
 import { cn } from '../../utils/cn'
 
 const NAV_MAIN = [
@@ -249,14 +250,23 @@ export default function Sidebar({ onClose }: Props) {
 
       {/* Footer — fixed bottom */}
       <div className="shrink-0 px-4 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
-        <span className="text-xs text-gray-400">v2.0</span>
-        <button
-          onClick={toggleDark}
-          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-          title={isDark ? 'Modo claro' : 'Modo escuro'}
-        >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        <span className="text-xs text-gray-400">v2.1</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleDark}
+            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+            title={isDark ? 'Modo claro' : 'Modo escuro'}
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button
+            onClick={() => { clearAuth(); window.location.reload() }}
+            className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+            title="Sair"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </div>
     </aside>
   )

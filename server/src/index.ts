@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { migrate } from './db.js'
 import authRouter from './routes/auth.js'
 import profilesRouter from './routes/profiles.js'
 import projectsRouter from './routes/projects.js'
@@ -52,6 +53,12 @@ setInterval(() => {
   } catch { /* uploads dir may not exist yet */ }
 }, 30 * 60 * 1000)
 
-app.listen(PORT, () => {
-  console.log(`[carrossel-api] Rodando na porta ${PORT}`)
+// Initialize DB and start server
+migrate().then(() => {
+  app.listen(PORT, () => {
+    console.log(`[carrossel-api] Rodando na porta ${PORT}`)
+  })
+}).catch(err => {
+  console.error('[carrossel-api] Erro ao inicializar DB:', err)
+  process.exit(1)
 })

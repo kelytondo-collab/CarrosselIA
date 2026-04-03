@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ChangeEvent } from 'react'
-import { ArrowLeft, Download, FileArchive, Image, Palette, Type, Wand2, Copy, Check, LayoutGrid } from 'lucide-react'
+import { ArrowLeft, Download, FileArchive, Image, Palette, Type, Wand2, Copy, Check, LayoutGrid, Instagram } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import SlideCard from './SlideCard'
 import CaptionEditor from '../caption/CaptionEditor'
@@ -17,6 +17,7 @@ import { exportSlideAsImage, exportAllSlidesAsZip, exportManyChatAsTxt } from '.
 import { generateSlideImage } from '../../services/geminiService'
 import { updateProjectCarousel, getDefaultProfile } from '../../services/storageService'
 import { saveCarouselImages, restoreCarouselImages } from '../../services/imageCache'
+import InstagramPublishDrawer from '../shared/InstagramPublishDrawer'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -128,6 +129,7 @@ export default function CarouselPreview() {
     return (p?.stylePackId as StylePackId) || 'livre'
   })
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
+  const [showPublish, setShowPublish] = useState(false)
 
   // Restore cached images on mount
   useEffect(() => {
@@ -378,6 +380,13 @@ export default function CarouselPreview() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPublish(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all"
+          >
+            <Instagram size={15} />
+            <span className="hidden sm:inline">Publicar</span>
+          </button>
           <button
             onClick={handleDlAll}
             disabled={dlAllLoading}
@@ -848,6 +857,14 @@ export default function CarouselPreview() {
           </div>
         )}
       </div>
+
+      <InstagramPublishDrawer
+        open={showPublish}
+        onClose={() => setShowPublish(false)}
+        mode="carousel"
+        caption={[caption.hook, caption.body, caption.cta, caption.hashtags].filter(Boolean).join('\n\n')}
+        slideRefs={slideRefs}
+      />
     </div>
   )
 }

@@ -25,7 +25,7 @@ const router = Router()
 
 // GET /auth/instagram — redirect to Facebook OAuth
 router.get('/instagram', (req, res) => {
-  const scopes = 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement'
+  const scopes = 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_comments,pages_show_list,pages_read_engagement'
   const state = crypto.randomBytes(16).toString('hex')
   const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_CALLBACK_URL)}&scope=${scopes}&state=${state}&response_type=code`
   res.redirect(url)
