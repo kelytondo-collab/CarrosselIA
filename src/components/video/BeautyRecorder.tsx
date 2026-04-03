@@ -57,6 +57,7 @@ export default function BeautyRecorder({ onRecordingComplete, onClose }: BeautyR
       streamRef.current = stream
       if (srcVideoRef.current) {
         srcVideoRef.current.srcObject = stream
+        try { await srcVideoRef.current.play() } catch { /* autoplay fallback */ }
       }
       setCameraReady(true)
     } catch (err) {
@@ -319,10 +320,10 @@ export default function BeautyRecorder({ onRecordingComplete, onClose }: BeautyR
       {/* Hidden source video (raw camera feed) */}
       <video
         ref={srcVideoRef}
-        className="hidden"
         autoPlay
         playsInline
         muted
+        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
       />
 
       {/* Filtered canvas (what the user sees) */}
