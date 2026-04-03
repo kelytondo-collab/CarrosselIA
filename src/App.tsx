@@ -30,53 +30,51 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(() => !getDefaultProfile())
   const [loggedIn, setLoggedIn] = useState(true) // Auth desabilitado — Carrossel livre
 
-  // Auto-login silencioso (cria usuario padrao se nao existe)
+  // Auto-login + Instagram OAuth callback (sequencial)
   useEffect(() => {
-    ensureLoggedIn()
-  }, [])
+    async function init() {
+      // 1. Garante login antes de qualquer coisa
+      await ensureLoggedIn()
 
-  // Recovery: re-check profile after mount (fixes race condition)
-  useEffect(() => {
-    const profile = getDefaultProfile()
-    if (profile && showOnboarding) setShowOnboarding(false)
-  }, [])
+      // 2. Recovery: re-check profile
+      const profile = getDefaultProfile()
+      if (profile && showOnboarding) setShowOnboarding(false)
 
-  // Handle Instagram OAuth callback from hash params
-  useEffect(() => {
-    const hash = window.location.hash
-    if (!hash.includes('ig_callback=1')) return
+      // 3. Handle Instagram OAuth callback
+      const hash = window.location.hash
+      if (hash.includes('ig_callback=1')) {
+        const params = new URLSearchParams(hash.slice(1))
+        const token = params.get('ig_token')
+        const accountId = params.get('ig_account_id')
+        const username = params.get('ig_username')
+        const expiresAt = params.get('ig_expires_at')
 
-    const params = new URLSearchParams(hash.slice(1))
-    if (params.get('ig_callback') === '1') {
-      const token = params.get('ig_token')
-      const accountId = params.get('ig_account_id')
-      const username = params.get('ig_username')
-      const expiresAt = params.get('ig_expires_at')
-
-      if (token && accountId && username && expiresAt) {
-        // Save token to server
-        saveInstagramToken({ accessToken: token, igAccountId: accountId, username, expiresAt })
-          .then(() => {
+        if (token && accountId && username && expiresAt) {
+          try {
+            await saveInstagramToken({ accessToken: token, igAccountId: accountId, username, expiresAt })
             setInstagram({ username, expiresAt })
             toast.success(`Instagram conectado: @${username}`)
-          })
-          .catch(() => toast.error('Erro ao salvar token do Instagram'))
+          } catch {
+            toast.error('Erro ao salvar token do Instagram')
+          }
+        }
+        window.history.replaceState(null, '', window.location.pathname)
+        return
       }
-      // Clear hash
-      window.history.replaceState(null, '', window.location.pathname)
-      return
-    }
 
-    // Check for Instagram errors
-    const igError = params.get('ig_error')
-    if (igError) {
-      if (igError === 'no_business_account') {
-        toast.error('Nenhuma conta Business/Creator encontrada. Converta sua conta no Instagram.')
-      } else {
-        toast.error(`Erro Instagram: ${igError}`)
+      // 4. Check for Instagram errors
+      if (hash.includes('ig_error')) {
+        const params = new URLSearchParams(hash.slice(1))
+        const igError = params.get('ig_error')
+        if (igError === 'no_business_account') {
+          toast.error('Nenhuma conta Business/Creator encontrada. Converta sua conta no Instagram.')
+        } else if (igError) {
+          toast.error(`Erro Instagram: ${igError}`)
+        }
+        window.history.replaceState(null, '', window.location.pathname)
       }
-      window.history.replaceState(null, '', window.location.pathname)
     }
+    init()
   }, [])
 
   // Luminae → Carrossel: detect #import= hash on mount
