@@ -47,16 +47,18 @@ function tryParseJSON(text: string): LuminaeImportData | null {
 
     // Alternative: { titulo, corpo, cta } (single post from Luminae)
     if (data.titulo || data.headline || data.title) {
+      // Se tem visualText, usa como headline (texto da imagem) e content como legenda
+      const hasVisualText = !!data.visualText
       return {
         slides: [{
-          headline: data.titulo || data.headline || data.title,
-          subtitle: data.corpo || data.body || data.subtitle || data.subtitulo || '',
+          headline: hasVisualText ? data.visualText : (data.titulo || data.headline || data.title),
+          subtitle: hasVisualText ? '' : (data.corpo || data.body || data.subtitle || data.subtitulo || ''),
         }],
         caption: {
-          hook: data.hook || data.gancho || data.titulo || '',
-          body: data.corpo || data.body || '',
+          hook: data.visualText || data.hook || data.gancho || data.titulo || '',
+          body: hasVisualText ? (data.content || data.corpo || data.body || '') : (data.corpo || data.body || ''),
           cta: data.cta || data.chamada || '',
-          hashtags: data.hashtags || '',
+          hashtags: Array.isArray(data.hashtags) ? data.hashtags.map((h: string) => `#${h.replace('#', '')}`).join(' ') : (data.hashtags || ''),
         },
         tipo: 'post',
         format: 'json',
