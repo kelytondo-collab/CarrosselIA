@@ -14,16 +14,24 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 5px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.3);
-  border-radius: 3px;
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.7);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
 }

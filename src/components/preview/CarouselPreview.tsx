@@ -409,7 +409,7 @@ export default function CarouselPreview() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-scroll">
         {/* SLIDES TAB */}
         {tab === 'slides' && (
           <div className="px-6 py-6">
