@@ -19,18 +19,59 @@ import QuoteVideoEditor from './components/video/QuoteVideoEditor'
 import CarouselReelEditor from './components/video/CarouselReelEditor'
 import ReelsConexaoEditor from './components/video/ReelsConexaoEditor'
 import ReelsRecordEditor from './components/video/ReelsRecordEditor'
+import LoginScreen from './components/auth/LoginScreen'
 import { getDefaultProfile, createSimpleProject, updateProjectCarousel, updateProjectPost, updateProjectStories } from './services/storageService'
+import { saveInstagramToken } from './services/apiService'
 import toast from 'react-hot-toast'
 
 function AppContent() {
-  const { view, isDark, apiKey, refreshProfiles, setView, setCurrentProject, setCurrentCarousel, refreshProjects } = useApp()
+  const { view, isDark, apiKey, refreshProfiles, setView, setCurrentProject, setCurrentCarousel, refreshProjects, setInstagram } = useApp()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !getDefaultProfile())
+  const [loggedIn, setLoggedIn] = useState(true) // Auth desabilitado — Carrossel livre
 
   // Recovery: re-check profile after mount (fixes race condition)
   useEffect(() => {
     const profile = getDefaultProfile()
     if (profile && showOnboarding) setShowOnboarding(false)
+  }, [])
+
+  // Handle Instagram OAuth callback from hash params
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash.includes('ig_callback=1')) return
+
+    const params = new URLSearchParams(hash.slice(1))
+    if (params.get('ig_callback') === '1') {
+      const token = params.get('ig_token')
+      const accountId = params.get('ig_account_id')
+      const username = params.get('ig_username')
+      const expiresAt = params.get('ig_expires_at')
+
+      if (token && accountId && username && expiresAt) {
+        // Save token to server
+        saveInstagramToken({ accessToken: token, igAccountId: accountId, username, expiresAt })
+          .then(() => {
+            setInstagram({ username, expiresAt })
+            toast.success(`Instagram conectado: @${username}`)
+          })
+          .catch(() => toast.error('Erro ao salvar token do Instagram'))
+      }
+      // Clear hash
+      window.history.replaceState(null, '', window.location.pathname)
+      return
+    }
+
+    // Check for Instagram errors
+    const igError = params.get('ig_error')
+    if (igError) {
+      if (igError === 'no_business_account') {
+        toast.error('Nenhuma conta Business/Creator encontrada. Converta sua conta no Instagram.')
+      } else {
+        toast.error(`Erro Instagram: ${igError}`)
+      }
+      window.history.replaceState(null, '', window.location.pathname)
+    }
   }, [])
 
   // Luminae → Carrossel: detect #import= hash on mount
@@ -106,7 +147,7 @@ function AppContent() {
           setView('reels-conexao')
           toast.success(`${phrases.length} frases importadas do Luminae!`)
         } else {
-          toast.error('Nenhuma frase encontrada no Reels Conexão')
+          toast.error('Nenhuma frase encontrada no Reels Conexao')
         }
       } else if (tipo === 'reels_record') {
         // Save hook text to localStorage — ReelsRecordEditor reads on mount
@@ -151,6 +192,28 @@ function AppContent() {
   const handleOnboardingComplete = () => {
     refreshProfiles()
     setShowOnboarding(false)
+  }
+
+  const handleLoginSuccess = () => {
+    setLoggedIn(true)
+    // Trigger data sync from server
+    window.location.reload()
+  }
+
+  // Show login screen if not logged in
+  if (!loggedIn) {
+    return (
+      <div>
+        <LoginScreen onSuccess={handleLoginSuccess} />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: 'dark:bg-gray-800 dark:text-white',
+            style: { borderRadius: '12px', fontSize: '13px' },
+          }}
+        />
+      </div>
+    )
   }
 
   if (showOnboarding) {
