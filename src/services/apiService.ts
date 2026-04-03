@@ -31,6 +31,19 @@ async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return data as T
 }
 
+// ── Auto-login (cria usuario padrao silenciosamente) ──
+
+export async function ensureLoggedIn(): Promise<void> {
+  if (getToken()) return
+  try {
+    await login('kelly@kellytondo.com', 'carrossel2026')
+  } catch {
+    try {
+      await register('kelly@kellytondo.com', 'Kelly', 'carrossel2026')
+    } catch { /* already exists or server offline */ }
+  }
+}
+
 // ── Auth ──
 
 export interface AuthUser {

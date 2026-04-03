@@ -21,7 +21,7 @@ import ReelsConexaoEditor from './components/video/ReelsConexaoEditor'
 import ReelsRecordEditor from './components/video/ReelsRecordEditor'
 import LoginScreen from './components/auth/LoginScreen'
 import { getDefaultProfile, createSimpleProject, updateProjectCarousel, updateProjectPost, updateProjectStories } from './services/storageService'
-import { saveInstagramToken } from './services/apiService'
+import { saveInstagramToken, ensureLoggedIn } from './services/apiService'
 import toast from 'react-hot-toast'
 
 function AppContent() {
@@ -29,6 +29,11 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !getDefaultProfile())
   const [loggedIn, setLoggedIn] = useState(true) // Auth desabilitado — Carrossel livre
+
+  // Auto-login silencioso (cria usuario padrao se nao existe)
+  useEffect(() => {
+    ensureLoggedIn()
+  }, [])
 
   // Recovery: re-check profile after mount (fixes race condition)
   useEffect(() => {
