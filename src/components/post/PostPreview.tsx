@@ -313,7 +313,7 @@ export default function PostPreview() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+      <div className="flex-1 min-h-0 scroll-area px-6 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left: Card + Controls */}
           <div className="space-y-4">

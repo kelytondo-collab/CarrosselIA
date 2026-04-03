@@ -216,7 +216,7 @@ export default function StoriesPreview() {
       </div>
 
       {/* Stories grid */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+      <div className="flex-1 min-h-0 scroll-area px-6 py-6">
         <div className="flex gap-6 overflow-x-auto pb-4">
           {slides.map((slide, i) => {
             const bg = slide.imageUrl

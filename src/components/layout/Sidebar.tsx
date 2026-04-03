@@ -143,55 +143,11 @@ export default function Sidebar({ onClose }: Props) {
         )}
       </div>
 
-      {/* Projects */}
-      <div className="px-3 pt-4 pb-2">
-        {NAV_MAIN.map(item => (
-          <button
-            key={item.id}
-            onClick={() => go(item.id)}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-              view === item.id
-                ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-            )}
-          >
-            <item.icon size={18} />
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Create section */}
-      <div className="px-3 pb-2">
-        <p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Criar</p>
-        <div className="space-y-0.5">
-          {NAV_CREATE.map(item => (
-            <button
-              key={item.id}
-              onClick={() => go(item.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-                view === item.id || (item.id === 'editor' && view === 'preview') || (item.id === 'post-editor' && view === 'post-preview') || (item.id === 'stories-editor' && view === 'stories-preview')
-                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              )}
-            >
-              <item.icon size={18} />
-              <div className="flex flex-col items-start">
-                <span>{item.label}</span>
-                <span className="text-[10px] opacity-50">{item.desc}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Video section */}
-      <div className="px-3 pb-2">
-        <p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video</p>
-        <div className="space-y-0.5">
-          {NAV_VIDEO.map(item => (
+      {/* Scrollable navigation area */}
+      <div className="flex-1 min-h-0 scroll-area px-3 pt-4 pb-2">
+        {/* Projects */}
+        <div className="pb-2">
+          {NAV_MAIN.map(item => (
             <button
               key={item.id}
               onClick={() => go(item.id)}
@@ -203,39 +159,83 @@ export default function Sidebar({ onClose }: Props) {
               )}
             >
               <item.icon size={18} />
-              <div className="flex flex-col items-start">
-                <span>{item.label}</span>
-                <span className="text-[10px] opacity-50">{item.desc}</span>
-              </div>
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Create section */}
+        <div className="pb-2">
+          <p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Criar</p>
+          <div className="space-y-0.5">
+            {NAV_CREATE.map(item => (
+              <button
+                key={item.id}
+                onClick={() => go(item.id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                  view === item.id || (item.id === 'editor' && view === 'preview') || (item.id === 'post-editor' && view === 'post-preview') || (item.id === 'stories-editor' && view === 'stories-preview')
+                    ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                <item.icon size={18} />
+                <div className="flex flex-col items-start">
+                  <span>{item.label}</span>
+                  <span className="text-[10px] opacity-50">{item.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Video section */}
+        <div className="pb-2">
+          <p className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video</p>
+          <div className="space-y-0.5">
+            {NAV_VIDEO.map(item => (
+              <button
+                key={item.id}
+                onClick={() => go(item.id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                  view === item.id
+                    ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                <item.icon size={18} />
+                <div className="flex flex-col items-start">
+                  <span>{item.label}</span>
+                  <span className="text-[10px] opacity-50">{item.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom nav items inside scroll */}
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
+          {NAV_BOTTOM.map(item => (
+            <button
+              key={item.id}
+              onClick={() => go(item.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                view === item.id
+                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              <item.icon size={18} />
+              {item.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Bottom nav */}
-      <nav className="px-3 pb-2 space-y-0.5">
-        {NAV_BOTTOM.map(item => (
-          <button
-            key={item.id}
-            onClick={() => go(item.id)}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-              view === item.id
-                ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-            )}
-          >
-            <item.icon size={18} />
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* API key status */}
-      <div className="px-4 pb-2">
+      {/* API key status — fixed bottom */}
+      <div className="shrink-0 px-4 pb-2">
         <div className={cn(
           'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium',
           apiKey
@@ -247,8 +247,8 @@ export default function Sidebar({ onClose }: Props) {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      {/* Footer — fixed bottom */}
+      <div className="shrink-0 px-4 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
         <span className="text-xs text-gray-400">v2.0</span>
         <button
           onClick={toggleDark}
