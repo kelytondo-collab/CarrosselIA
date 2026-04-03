@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart, Camera, ChevronDown, LogOut, Check } from 'lucide-react'
+import { LayoutDashboard, User, Settings, Moon, Sun, Sparkles, X, Zap, Layers, Square, Film, Video, Clapperboard, Heart, Camera, ChevronDown, Check } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import { getDefaultProfile, saveProfile } from '../../services/storageService'
