@@ -27,7 +27,8 @@ app.use('/uploads', express.static(join(__dirname, '..', 'uploads')))
 app.use('/auth', authRouter)
 app.use('/api/profiles', profilesRouter)
 app.use('/api/projects', projectsRouter)
-app.use('/api', instagramRouter)
+app.use('/auth', instagramRouter)  // OAuth: /auth/instagram, /auth/instagram/callback
+app.use('/api', instagramRouter)   // Protected: /api/instagram/*, /api/upload-images, /api/publish/*
 
 // Health check
 app.get('/health', (_req, res) => {
