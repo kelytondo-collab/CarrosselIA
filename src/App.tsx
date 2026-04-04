@@ -155,6 +155,21 @@ function AppContent() {
         } else {
           toast.error('Nenhuma frase encontrada no Reels Conexao')
         }
+      } else if (tipo === 'video_script') {
+        // Video script with timecodes → teleprompter + auto-edit
+        const script = data.script || ''
+        const hook = data.hook || caption.hook || ''
+        if (script || hook) {
+          localStorage.setItem('luminae_video_script_import', JSON.stringify({
+            script,
+            hook,
+            caption: caption.body || '',
+          }))
+          setView('reels-record')
+          toast.success('Roteiro importado do Luminae!')
+        } else {
+          toast.error('Nenhum roteiro encontrado')
+        }
       } else if (tipo === 'reels_record') {
         // Save hook text to localStorage — ReelsRecordEditor reads on mount
         const hook = data.hook || caption.hook || ''

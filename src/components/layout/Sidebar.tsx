@@ -20,7 +20,7 @@ const NAV_VIDEO = [
   { id: 'quote-video' as View, label: 'Video Citacao', icon: Video, desc: 'Reel/Feed' },
   { id: 'carousel-reel' as View, label: 'Carrossel Reel', icon: Clapperboard, desc: 'Auto-scroll' },
   { id: 'reels-conexao' as View, label: 'Reels Conexão', icon: Heart, desc: 'B-roll + Legendas' },
-  { id: 'reels-record' as View, label: 'Reels', icon: Camera, desc: 'Gravar + Filtro' },
+  { id: 'reels-record' as View, label: 'Gravar Reel', icon: Camera, desc: 'Teleprompter + Auto-edit' },
 ]
 
 const NAV_BOTTOM = [
