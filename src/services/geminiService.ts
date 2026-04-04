@@ -301,7 +301,7 @@ TEXTO DO ESPECIALISTA:
 ${baseText}
 ---
 
-Formate este texto como POST ESTÁTICO Instagram (1080x1080).
+Formate este texto como POST ESTÁTICO Instagram (1080x1350, formato 4:5 vertical).
 EXTRAIA do texto (NÃO reescreva):
 {
   "headline": "frase EXATA mais impactante do texto (até 50 chars)",
@@ -558,7 +558,7 @@ export const generatePostCopy = async (
   })
 
   const prompt = `
-Gere um POST ESTÁTICO para Instagram (formato quadrado 1080x1080).
+Gere um POST ESTÁTICO para Instagram (formato 4:5 vertical, 1080x1350).
 Retorne APENAS JSON válido:
 {
   "headline": "título impactante até 50 chars",
@@ -664,7 +664,7 @@ export const generateFromReference = async (
     : `\nTema: ${theme}\n`
 
   const prompt = `
-Crie um POST ESTÁTICO Instagram (1080x1080) INSPIRADO nesta análise de referência:
+Crie um POST ESTÁTICO Instagram (1080x1350, formato 4:5 vertical) INSPIRADO nesta análise de referência:
 - Layout: ${analysis.layout}
 - Mood: ${analysis.mood}
 - Tipografia: ${analysis.typography}
@@ -765,7 +765,7 @@ CRITICAL RULES:
 5. Keep the person's face and features accurate to the photo provided
 6. Match the described pose, lighting, background, and color grading exactly
 
-Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or graphics.`
+Output: 1080x1350 portrait photograph (4:5 ratio). Cinematic quality. Absolutely no text or graphics.`
           }
         ]
       }],
@@ -781,7 +781,7 @@ Output: 1080x1080 square photograph. Cinematic quality. Absolutely no text or gr
           role: 'user',
           parts: [
             { inlineData: { mimeType: userMime, data: userData } },
-            { text: `Create a professional portrait photograph of this person. Dark background, warm cinematic lighting, confident professional pose, half-body shot. Output ONLY a clean photograph — absolutely no text, no graphics, no overlays, no watermarks. Just a raw photo. 1080x1080 square.` }
+            { text: `Create a professional portrait photograph of this person. Dark background, warm cinematic lighting, confident professional pose, half-body shot. Output ONLY a clean photograph — absolutely no text, no graphics, no overlays, no watermarks. Just a raw photo. 1080x1350 portrait (4:5 ratio).` }
           ]
         }],
         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,

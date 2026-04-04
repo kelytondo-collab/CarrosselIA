@@ -45,14 +45,14 @@ export default function InstagramPublishDrawer({ open, onClose, mode, caption: i
         const refs = slideRefs.current.filter(Boolean) as HTMLDivElement[]
         for (let i = 0; i < refs.length; i++) {
           setProgress(`Capturando slide ${i + 1} de ${refs.length}...`)
-          const canvas = await html2canvas(refs[i], { scale: 2, useCORS: true, backgroundColor: null })
+          const canvas = await html2canvas(refs[i], { scale: 3.6, useCORS: true, backgroundColor: null })
           const blob = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob(b => b ? resolve(b) : reject(new Error('Erro ao converter canvas')), 'image/png')
           })
           blobs.push(blob)
         }
       } else if (mode === 'single' && singleRef?.current) {
-        const canvas = await html2canvas(singleRef.current, { scale: 2, useCORS: true, backgroundColor: null })
+        const canvas = await html2canvas(singleRef.current, { scale: 3.6, useCORS: true, backgroundColor: null })
         const blob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('Erro ao converter canvas')), 'image/png')
         })

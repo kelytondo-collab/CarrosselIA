@@ -77,7 +77,9 @@ function getProfileFont() {
   return FONT_OPTIONS[0]
 }
 
-const SIZE = 360
+// 4:5 ratio — Instagram feed standard (300×375 × 3.6 = 1080×1350)
+const DISP_W = 300
+const DISP_H = 375
 
 export default function PostPreview() {
   const { currentProject, setView, apiKey, expertPhotoBase64, refreshProjects } = useApp()
@@ -169,7 +171,7 @@ export default function PostPreview() {
       const prompt = useExpertPhoto
         ? (current.visualPrompt || `Fotografia profissional de especialista em ${profile?.niche || 'negócios'}`)
         : `Fundo abstrato/metafórico para post sobre: "${current.headline}". IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto, SEM logos.`
-      const url = await generateSlideImage(prompt, '1:1', useExpertPhoto ? expertPhotoBase64 : undefined)
+      const url = await generateSlideImage(prompt, '4:5', useExpertPhoto ? expertPhotoBase64 : undefined)
       savePost({ ...current, imageUrl: url })
       toast.success(`${useExpertPhoto ? 'Foto expert' : 'Fundo'} gerado!`, { id: toastId })
     } catch (err: unknown) {
@@ -181,7 +183,7 @@ export default function PostPreview() {
     if (!cardRef.current) return
     setDownloading(true)
     try {
-      const blob = await exportSlideAsImage(cardRef.current, 3)
+      const blob = await exportSlideAsImage(cardRef.current, 3.6)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a'); a.href = url; a.download = `post-${Date.now()}.png`; a.click()
       URL.revokeObjectURL(url)
@@ -192,7 +194,7 @@ export default function PostPreview() {
   const txtColor = palette.p.text || palette.p.accent
 
   const renderCard = () => {
-    const pad = Math.round(SIZE * 0.08)
+    const pad = Math.round(DISP_W * 0.08)
     const hLen = post.headline.length
     const totalLen = hLen + post.subtitle.length
 
@@ -225,7 +227,7 @@ export default function PostPreview() {
         </div>
       )
       return (
-        <div ref={cardRef} style={{ width: SIZE, height: SIZE, display: 'flex', flexDirection: layout === 'photo-left' ? 'row' : 'row-reverse', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
+        <div ref={cardRef} style={{ width: DISP_W, height: DISP_H, display: 'flex', flexDirection: layout === 'photo-left' ? 'row' : 'row-reverse', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
           {imgSide}{textSide}
         </div>
       )
@@ -237,7 +239,7 @@ export default function PostPreview() {
         ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}60 40%, ${bgColor}ee 100%), url(${post.imageUrl}) center/cover no-repeat`
         : bgColor
       return (
-        <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
+        <div ref={cardRef} style={{ width: DISP_W, height: DISP_H, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
           <div style={{ width: 4, height: 50, background: palette.p.primary, borderRadius: 2, marginBottom: 16 }} />
           <h2 style={{ fontSize: scaleH(24), fontWeight: 900, color, lineHeight: 1.15, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em', textTransform: 'uppercase' as const }}>{post.headline}</h2>
           {post.subtitle && <><div style={{ height: 10 }} /><p style={{ fontSize: scaleS(12), color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
@@ -252,7 +254,7 @@ export default function PostPreview() {
         ? `linear-gradient(to bottom, ${bgColor}20 0%, ${bgColor}80 50%, ${bgColor}ee 100%), url(${post.imageUrl}) center/cover no-repeat`
         : bgColor
       return (
-        <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box', textAlign: 'center' }}>
+        <div ref={cardRef} style={{ width: DISP_W, height: DISP_H, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ fontSize: 64, color: palette.p.primary, lineHeight: 0.8, marginBottom: 12, fontFamily: 'Georgia, serif', opacity: 0.6 }}>"</div>
           <h2 style={{ fontSize: scaleH(22), fontWeight: 700, color, lineHeight: 1.3, margin: 0, fontFamily: font.title, fontStyle: 'italic' }}>{post.headline}</h2>
           {post.subtitle && <><div style={{ height: 12 }} /><p style={{ fontSize: scaleS(11), color: subColor, lineHeight: 1.6, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
@@ -268,7 +270,7 @@ export default function PostPreview() {
         ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}50 40%, ${bgColor}ee 100%), url(${post.imageUrl}) center/cover no-repeat`
         : `linear-gradient(145deg, ${bgColor} 0%, ${palette.p.secondary} 100%)`
       return (
-        <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
+        <div ref={cardRef} style={{ width: DISP_W, height: DISP_H, background: bg, padding: pad * 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden', position: 'relative', fontFamily: font.sub, boxSizing: 'border-box' }}>
           <h2 style={{ fontSize: scaleH(28), fontWeight: 900, color, lineHeight: 1.1, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em' }}>{post.headline}</h2>
           {post.subtitle && <><div style={{ height: 8 }} /><p style={{ fontSize: scaleS(12), color: subColor, lineHeight: 1.5, margin: 0, fontFamily: font.sub }}>{post.subtitle}</p></>}
           <div style={{ marginTop: 20, padding: '12px 24px', background: palette.p.primary, borderRadius: 12, textAlign: 'center', alignSelf: 'stretch' }}>
@@ -284,7 +286,7 @@ export default function PostPreview() {
       ? `linear-gradient(to bottom, ${bgColor}10 0%, ${bgColor}40 35%, ${bgColor}dd 100%), url(${post.imageUrl}) center/cover no-repeat`
       : `linear-gradient(145deg, ${bgColor} 0%, ${palette.p.secondary} 100%)`
     return (
-      <div ref={cardRef} style={{ width: SIZE, height: SIZE, background: bg, padding: pad, display: 'flex', flexDirection: 'column', justifyContent: post.imageUrl ? 'flex-end' : 'space-between', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', fontFamily: font.sub }}>
+      <div ref={cardRef} style={{ width: DISP_W, height: DISP_H, background: bg, padding: pad, display: 'flex', flexDirection: 'column', justifyContent: post.imageUrl ? 'flex-end' : 'space-between', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', fontFamily: font.sub }}>
         <div />
         <div>
           <h2 style={{ fontSize: scaleH(26), fontWeight: 900, color, lineHeight: 1.15, margin: 0, fontFamily: font.title, letterSpacing: '-0.02em' }}>{post.headline}</h2>
@@ -302,7 +304,7 @@ export default function PostPreview() {
           <button onClick={() => setView('dashboard')} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><ArrowLeft size={18} /></button>
           <div>
             <h1 className="font-bold text-gray-900 dark:text-white text-sm">{currentProject?.name || 'Post'}</h1>
-            <p className="text-xs text-gray-400">1080×1080</p>
+            <p className="text-xs text-gray-400">1080×1350 (4:5)</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -351,12 +353,12 @@ export default function PostPreview() {
             </div>
 
             {/* Card */}
-            <div style={{ width: SIZE, borderRadius: 12, overflow: 'hidden' }} className="shadow-lg">
+            <div style={{ width: DISP_W, borderRadius: 12, overflow: 'hidden' }} className="shadow-lg">
               {renderCard()}
             </div>
 
             {/* Download + Regenerate buttons */}
-            <div className="flex gap-2" style={{ width: SIZE }}>
+            <div className="flex gap-2" style={{ width: DISP_W }}>
               <button onClick={download} disabled={downloading} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 shadow-lg">
                 <Download size={16} /> {downloading ? 'Exportando...' : 'Download PNG'}
               </button>
@@ -366,7 +368,7 @@ export default function PostPreview() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-1" style={{ width: SIZE }}>
+            <div className="flex gap-1" style={{ width: DISP_W }}>
               <button onClick={() => savePost({ ...post, imageUrl: undefined })} className={cn('flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all', !post.imageUrl ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>🎨 Cor</button>
               <label className={cn('flex-1 py-1.5 rounded-lg text-xs font-semibold border text-center cursor-pointer transition-all', post.imageUrl ? 'bg-green-50 dark:bg-green-900/20 border-green-400 text-green-700' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>
                 <Image size={12} className="inline mr-1" />Foto
@@ -381,7 +383,7 @@ export default function PostPreview() {
             </div>
 
             {/* Layouts */}
-            <div className="flex flex-wrap gap-1" style={{ width: SIZE }}>
+            <div className="flex flex-wrap gap-1" style={{ width: DISP_W }}>
               {LAYOUTS.map(l => (
                 <button key={l.id} onClick={() => { setLayout(l.id); savePost({ ...post, layout: l.id }) }} className={cn('px-2 py-1 rounded-lg text-[10px] font-medium border transition-all', layout === l.id ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700' : 'border-gray-200 dark:border-gray-700 text-gray-400')}>{l.label}</button>
               ))}
@@ -390,7 +392,7 @@ export default function PostPreview() {
             {/* Edit text */}
             <button onClick={() => setEditingText(!editingText)} className="text-xs text-violet-600 hover:underline">✎ Editar texto</button>
             {editingText && (
-              <div className="space-y-2 p-3 bg-white dark:bg-gray-800 rounded-xl border border-violet-300" style={{ width: SIZE }}>
+              <div className="space-y-2 p-3 bg-white dark:bg-gray-800 rounded-xl border border-violet-300" style={{ width: DISP_W }}>
                 <input value={post.headline} onChange={e => savePost({ ...post, headline: e.target.value })} className="w-full px-2.5 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white" placeholder="Título" />
                 <textarea value={post.subtitle} onChange={e => savePost({ ...post, subtitle: e.target.value })} rows={3} className="w-full px-2.5 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white resize-none" placeholder="Subtítulo" />
               </div>

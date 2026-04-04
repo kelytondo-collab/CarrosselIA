@@ -135,7 +135,7 @@ export default function PostEditor() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Post Estatico</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Formato 1080x1080 — pronto para Instagram</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Formato 1080x1350 (4:5) — tamanho ideal para Instagram</p>
           </div>
           {existingPost && (
             <button onClick={() => setView('post-preview' as View)} className="flex items-center gap-2 px-3 py-2 border border-violet-300 dark:border-violet-700 text-violet-600 dark:text-violet-400 rounded-xl text-sm font-semibold hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all">

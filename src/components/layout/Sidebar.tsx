@@ -12,7 +12,7 @@ const NAV_MAIN = [
 
 const NAV_CREATE = [
   { id: 'editor' as View, label: 'Carrossel', icon: Layers, desc: '1080x1350' },
-  { id: 'post-editor' as View, label: 'Post Estatico', icon: Square, desc: '1080x1080' },
+  { id: 'post-editor' as View, label: 'Post Estatico', icon: Square, desc: '1080x1350' },
   { id: 'stories-editor' as View, label: 'Stories', icon: Film, desc: '1080x1920' },
 ]
 
