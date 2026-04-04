@@ -173,7 +173,7 @@ function AppContent() {
           id: i + 1,
           type: 'content' as const,
           headline: s.headline || '',
-          body: s.subtitle || '',
+          body: '', // NUNCA usar subtitle como body — pode conter visualSuggestion (instrução de imagem)
           visualPrompt: '',
           layout: 'minimal' as const,
         }))

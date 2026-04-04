@@ -182,6 +182,13 @@ export async function publishCarousel(imageUrls: string[], caption: string): Pro
   })
 }
 
+export async function publishStories(imageUrls: string[]): Promise<{ published: number; results: { id: string; index: number }[] }> {
+  return api('/api/publish/stories', {
+    method: 'POST',
+    body: JSON.stringify({ imageUrls }),
+  })
+}
+
 export function getInstagramAuthUrl(): string {
   return `${API_URL}/auth/instagram`
 }

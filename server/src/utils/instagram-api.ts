@@ -30,7 +30,8 @@ export async function createContainer(
   accessToken: string,
   imageUrl: string,
   caption?: string,
-  isCarouselItem = false
+  isCarouselItem = false,
+  mediaType?: string
 ): Promise<string> {
   const params = new URLSearchParams({
     image_url: imageUrl,
@@ -38,6 +39,7 @@ export async function createContainer(
   })
   if (caption) params.set('caption', caption)
   if (isCarouselItem) params.set('is_carousel_item', 'true')
+  if (mediaType) params.set('media_type', mediaType)
 
   const res = await fetch(`${GRAPH_API}/${igAccountId}/media`, {
     method: 'POST',

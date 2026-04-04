@@ -178,4 +178,29 @@ router.post('/publish/carousel', authMiddleware, async (req: any, res) => {
   }
 })
 
+// POST /api/publish/stories — publish multiple images as individual stories
+router.post('/publish/stories', authMiddleware, async (req: any, res) => {
+  const { imageUrls } = req.body
+  if (!imageUrls?.length) {
+    return res.status(400).json({ error: 'Nenhuma imagem para publicar' })
+  }
+
+  const ig = db.prepare('SELECT access_token, ig_account_id FROM instagram_connections WHERE user_id = ?').get(req.userId) as any
+  if (!ig) return res.status(400).json({ error: 'Instagram nao conectado' })
+
+  try {
+    const results: { id: string; index: number }[] = []
+    for (let i = 0; i < imageUrls.length; i++) {
+      const containerId = await createContainer(ig.ig_account_id, ig.access_token, imageUrls[i], undefined, false, 'STORIES')
+      await waitForContainer(containerId, ig.access_token)
+      const result = await publishContainer(ig.ig_account_id, ig.access_token, containerId)
+      results.push({ id: result.id, index: i })
+    }
+    res.json({ published: results.length, results })
+  } catch (err: any) {
+    console.error('[Instagram Stories Publish Error]', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 export default router
