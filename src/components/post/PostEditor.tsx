@@ -46,10 +46,13 @@ export default function PostEditor() {
 
     const parsed = parseLuminaeContent(luminaeText)
     if (parsed && parsed.slides.length > 0) {
+      // Post: subtitle VAZIO — conteúdo vai só na legenda (caption.body)
+      const rawSubtitle = parsed.slides[0].subtitle || ''
+      const captionBody = parsed.caption.body || rawSubtitle
       const postData: PostData = {
         headline: parsed.slides[0].headline,
-        subtitle: parsed.slides[0].subtitle,
-        caption: { ...parsed.caption, hashtags: parsed.caption.hashtags || '' },
+        subtitle: '',
+        caption: { ...parsed.caption, body: captionBody, hashtags: parsed.caption.hashtags || '' },
         visualPrompt: parsed.slides[0].visualPrompt || '',
         layout: 'minimal',
         generatedAt: new Date().toISOString(),

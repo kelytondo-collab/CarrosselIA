@@ -124,10 +124,13 @@ function AppContent() {
         setView('preview')
         toast.success(autoStyle ? 'Carrossel pronto! Estilo aplicado automaticamente.' : 'Carrossel importado do Luminae!')
       } else if (tipo === 'post') {
+        // Post Instagram: subtitle VAZIO — conteúdo vai só na legenda (caption.body)
+        // Se subtitle vier preenchido, move pra caption.body pra não aparecer na imagem
+        const rawSubtitle = slides[0]?.subtitle || ''
         const postData = {
           headline: slides[0]?.headline || '',
-          subtitle: slides[0]?.subtitle || '',
-          caption: { hook: caption.hook || '', body: caption.body || '', cta: caption.cta || '', hashtags: caption.hashtags || '' },
+          subtitle: '',
+          caption: { hook: caption.hook || '', body: caption.body || rawSubtitle || '', cta: caption.cta || '', hashtags: caption.hashtags || '' },
           visualPrompt: '',
           layout: 'minimal' as const,
           generatedAt: new Date().toISOString(),
