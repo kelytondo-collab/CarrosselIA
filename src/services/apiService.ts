@@ -31,15 +31,45 @@ async function api<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return data as T
 }
 
-// ── Auto-login (cria usuario padrao silenciosamente) ──
+// ── Auto-login (cada navegador tem seu proprio usuario isolado) ──
+
+const SHARED_LEGACY_EMAIL = 'kelly@kellytondo.com'
+
+function getOrCreateDeviceId(): string {
+  let id = localStorage.getItem('carrossel_device_id')
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem('carrossel_device_id', id)
+  }
+  return id
+}
 
 export async function ensureLoggedIn(): Promise<void> {
-  if (getToken()) return
+  // Limpa sessao antiga compartilhada (bug pre-fix): todo mundo logava
+  // como kelly@kellytondo.com e via os perfis dos outros.
   try {
-    await login('kelly@kellytondo.com', 'carrossel2026')
+    const stored = localStorage.getItem('carrossel_user')
+    if (stored) {
+      const u = JSON.parse(stored)
+      if (u?.email === SHARED_LEGACY_EMAIL) {
+        clearAuth()
+        localStorage.removeItem('postativo_profiles')
+        localStorage.removeItem('postativo_projects')
+      }
+    }
+  } catch { /* ignore */ }
+
+  if (getToken()) return
+
+  const deviceId = getOrCreateDeviceId()
+  const email = `device-${deviceId}@carrossel.local`
+  const password = deviceId
+
+  try {
+    await login(email, password)
   } catch {
     try {
-      await register('kelly@kellytondo.com', 'Kelly', 'carrossel2026')
+      await register(email, 'Usuario', password)
     } catch { /* already exists or server offline */ }
   }
 }

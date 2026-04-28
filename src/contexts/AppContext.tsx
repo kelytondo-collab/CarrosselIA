@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { Project, CarouselData, SpecialistProfile, User, InstagramConnection } from '../types'
 import { loadDarkMode, saveDarkMode, loadApiKey, getProjects, getProfiles, saveApiKey } from '../services/storageService'
 import { initGemini } from '../services/geminiService'
-import { isLoggedIn, getMe, getStoredUser, fetchProfiles as apiFetchProfiles, fetchProjects as apiFetchProjects } from '../services/apiService'
+import { isLoggedIn, getMe, getStoredUser, fetchProfiles as apiFetchProfiles, fetchProjects as apiFetchProjects, ensureLoggedIn } from '../services/apiService'
 
 export type View = 'dashboard' | 'editor' | 'preview' | 'profiles' | 'settings' | 'post-editor' | 'post-preview' | 'stories-editor' | 'stories-preview' | 'quote-video' | 'carousel-reel' | 'reels-conexao' | 'reels-record'
 
@@ -64,16 +64,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [apiKey])
 
   useEffect(() => {
-    refreshProjects()
-    refreshProfiles()
-    // Load expert photo from default profile
-    const dp = getProfiles().find(p => p.is_default) || getProfiles()[0]
-    if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
+    // Garantir login isolado por device ANTES de qualquer sync.
+    // Se a sessao antiga compartilhada existir, ensureLoggedIn limpa.
+    ensureLoggedIn().then(() => {
+      refreshProjects()
+      refreshProfiles()
+      const dp = getProfiles().find(p => p.is_default) || getProfiles()[0]
+      if (dp?.photo_base64) setExpertPhotoBase64(dp.photo_base64)
 
-    // Check auth and sync from server
-    if (isLoggedIn()) {
-      syncFromServer()
-    }
+      if (isLoggedIn()) {
+        syncFromServer()
+      }
+    })
   }, [])
 
   const syncFromServer = async () => {
