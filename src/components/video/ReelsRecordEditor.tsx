@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Download, Loader2, Upload, X, ArrowLeft, Video, Image, ClipboardPaste, Check, Copy } from 'lucide-react'
+import { Download, Loader2, Upload, ArrowLeft, Video, Image, ClipboardPaste, Check, Copy } from 'lucide-react'
 import { generateCoverImage } from '../../services/videoRenderer'
 import type { CoverStyle } from '../../services/videoRenderer'
 import { getDefaultProfile } from '../../services/storageService'
