@@ -8,6 +8,28 @@ export const initGemini = (apiKey: string) => {
   genAI = new GoogleGenerativeAI(apiKey)
 }
 
+// Helper: parse JSON com proteção contra respostas malformadas do Gemini
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeJsonParse<T = any>(text: string, context: string): T {
+  // Tenta extrair JSON de dentro do texto (Gemini às vezes retorna texto extra)
+  const cleaned = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+
+  // Tenta encontrar o JSON no texto
+  const jsonMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+  const toParse = jsonMatch ? jsonMatch[0] : cleaned
+
+  try {
+    return JSON.parse(toParse) as T
+  } catch (e) {
+    const preview = toParse.slice(0, 200)
+    throw new Error(`Erro ao processar resposta do Gemini (${context}). A IA retornou um formato inválido. Tente novamente.\n\nDetalhe: ${e instanceof Error ? e.message : 'JSON inválido'}\nResposta: ${preview}...`)
+  }
+}
+
 const buildSystemPrompt = (tone: Tone, platform: Platform, niche: string, voiceBlueprint?: string): string => `
 Você é um especialista em copywriting e estratégia de conteúdo digital para ${platform}.
 Nicho: ${niche || 'marketing digital e empreendedorismo'}.
@@ -65,8 +87,8 @@ Retorne JSON com esta estrutura exata:
     }
   ],
   "caption": {
-    "hook": "1 frase curta e direta que para o scroll (máx 15 palavras)",
-    "body": "2-3 frases curtas que COMPLEMENTAM os slides sem repetir o conteúdo deles. Máx 50 palavras. Sem emojis excessivos.",
+    "hook": "1 frase NOVA que abre um loop ou faz uma pergunta que provoca. PROIBIDO copiar o título de qualquer slide (máx 15 palavras).",
+    "body": "2-3 frases curtas com ÂNGULO DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas palavras dos slides. Faça UMA destas: (a) pergunta que abre loop, (b) consequência implícita que desacomoda, (c) confissão pessoal que cria espelho, (d) provocação que questiona uma crença. Máx 50 palavras.",
     "cta": "Comenta [PALAVRA] que te envio [BENEFÍCIO]",
     "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível do carrossel"
@@ -96,7 +118,12 @@ O slide 1 deve ser a CAPA com gancho poderoso.
 O slide ${inputs.slideCount} deve ser o FECHAMENTO com CTA emocional.
 Os slides intermediários = uma ideia completa cada.
 
-REGRA DA LEGENDA: A legenda NÃO repete o conteúdo dos slides. Ela é CURTA (máx 4-5 linhas), complementa com um insight rápido e fecha com CTA direto. O conteúdo principal já está nos slides — a legenda só puxa pra ação.
+REGRA DA LEGENDA — CRÍTICA:
+A legenda É UMA CAMADA NOVA, NÃO um resumo. Os slides ENTREGAM o conteúdo; a legenda DESACOMODA o leitor.
+PROIBIDO: copiar headlines, copiar subtitles, repetir frases dos slides, parafrasear o que está nos cards.
+OBRIGATÓRIO: ângulo NOVO — pergunta que abre loop, consequência implícita, contexto pessoal, ou provocação que mexe com crença.
+Máx 4-5 linhas. Fecha com CTA direto.
+Se a legenda parecer um resumo dos slides, REESCREVA até virar uma camada de provocação que complementa.
 `
 
   onProgress?.('Gerando copy e estratégia...', 40)
@@ -108,7 +135,7 @@ REGRA DA LEGENDA: A legenda NÃO repete o conteúdo dos slides. Ela é CURTA (m�
 
   // Strip markdown if present
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText) as CarouselData
+  const parsed = safeJsonParse<CarouselData>(jsonText, 'carrossel')
 
   // Validate strategy fields
   if (!parsed.strategy || typeof parsed.strategy !== 'object') {
@@ -162,18 +189,25 @@ export const generateCarouselFormat = async (
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
-O texto abaixo foi criado com a essência única do especialista.
-REGRAS ABSOLUTAS:
-1. NÃO reescreva NENHUMA frase. Use as palavras EXATAS do texto original.
-2. NÃO adicione ideias novas. NÃO "melhore" o texto. NÃO troque vocabulário.
-3. DISTRIBUA o conteúdo pelos slides mantendo a progressão lógica.
-4. Para a caption: EXTRAIA hook e CTA do próprio texto. NÃO invente.
-5. Retorne APENAS JSON válido sem markdown.`,
+    systemInstruction: `Você tem DUAS funções diferentes nesta tarefa:
+
+1) PARA OS SLIDES — você é um FORMATADOR.
+   - NÃO reescreva NENHUMA frase do texto original.
+   - Use as palavras EXATAS do especialista. NÃO troque vocabulário. NÃO "melhore".
+   - Apenas DISTRIBUA o conteúdo pelos slides mantendo a progressão lógica.
+
+2) PARA A LEGENDA — você é um COPYWRITER que ESCREVE NOVO.
+   - A legenda é uma CAMADA NOVA, NÃO um resumo dos slides.
+   - PROIBIDO copiar frases, headlines ou subtitles dos slides na legenda.
+   - PROIBIDO parafrasear o conteúdo dos cards.
+   - A legenda deve INSTIGAR: pergunta que abre loop, consequência implícita, confissão pessoal, ou provocação que mexe com crença.
+   - Use o TOM e o VOCABULÁRIO do especialista (que estão no texto), mas com ÂNGULO DIFERENTE.
+
+Retorne APENAS JSON válido sem markdown.`,
   })
 
   const prompt = `
-TEXTO DO ESPECIALISTA (use EXATAMENTE estas palavras):
+TEXTO DO ESPECIALISTA (use EXATAMENTE estas palavras nos SLIDES):
 ---
 ${inputs.baseText}
 ---
@@ -196,9 +230,9 @@ Retorne JSON:
     { "id": 1, "headline": "frase EXATA do texto", "subtitle": "complemento EXATO do texto", "visualPrompt": "descrição visual", "emotion": "emoção" }
   ],
   "caption": {
-    "hook": "EXTRAIA do texto — 1 frase curta e impactante (máx 15 palavras)",
-    "body": "2-3 frases curtas que COMPLEMENTAM sem repetir os slides. Máx 50 palavras.",
-    "cta": "EXTRAIA do texto — chamada para ação direta e curta",
+    "hook": "1 frase NOVA que abre loop ou provoca. PROIBIDO copiar título de slide. Use o tom do especialista, mas é frase ORIGINAL (máx 15 palavras).",
+    "body": "2-3 frases curtas com ÂNGULO DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas frases. Faça UMA destas: (a) pergunta que abre loop, (b) consequência implícita que desacomoda, (c) confissão/contexto pessoal, (d) provocação que questiona crença. Máx 50 palavras.",
+    "cta": "chamada para ação direta — pode usar a energia do CTA do texto, mas reescreva no formato 'Comenta [PALAVRA] que te envio [BENEFÍCIO]' ou similar curto",
     "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível"
   },
@@ -206,9 +240,10 @@ Retorne JSON:
   "seoKeywords": []
 }
 
-IMPORTANTE: O slide 1 = capa (hook mais forte do texto). Slide ${inputs.slideCount} = fechamento/CTA do texto.
-NÃO reescreva. NÃO melhore. DISTRIBUA.
-REGRA DA LEGENDA: Legenda CURTA (máx 4-5 linhas). NÃO repita o que está nos slides. Só complementa com insight rápido + CTA direto.`
+IMPORTANTE:
+- O slide 1 = capa (hook mais forte do texto). Slide ${inputs.slideCount} = fechamento/CTA do texto.
+- NOS SLIDES: NÃO reescreva. NÃO melhore. DISTRIBUA palavras exatas.
+- NA LEGENDA: ESCREVA NOVO. A legenda complementa, NÃO repete. Se a legenda parecer um resumo dos slides, REFAÇA até virar uma camada de provocação.`
 
   onProgress?.('Formatando em slides...', 40)
 
@@ -218,7 +253,7 @@ REGRA DA LEGENDA: Legenda CURTA (máx 4-5 linhas). NÃO repita o que está nos s
   onProgress?.('Processando resultado...', 80)
 
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText) as CarouselData
+  const parsed = safeJsonParse<CarouselData>(jsonText, 'carrossel')
 
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
     ...s,
@@ -255,8 +290,8 @@ Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
   })
 
   const sectionDesc: Record<string, string> = {
-    hook: 'a PRIMEIRA LINHA da legenda — 1 frase curta que para o scroll (máx 15 palavras).',
-    body: 'o CORPO da legenda — 2-3 frases CURTAS que complementam sem repetir os slides. Máx 50 palavras. Direto ao ponto.',
+    hook: 'a PRIMEIRA LINHA da legenda — 1 frase NOVA que abre um loop ou provoca. PROIBIDO copiar título de slide. Frase original que para o scroll (máx 15 palavras).',
+    body: 'o CORPO da legenda — 2-3 frases CURTAS com ÂNGULO DIFERENTE dos slides. PROIBIDO resumir cards ou parafrasear o que está nos slides. Faça UMA destas: (a) pergunta que abre loop, (b) consequência implícita, (c) confissão pessoal, (d) provocação que questiona crença. Máx 50 palavras.',
     cta: 'a CHAMADA PARA AÇÃO — curta e direta. Ex: "Comenta [PALAVRA] que te envio..."',
     hashtags: '10-15 HASHTAGS relevantes para o nicho, separadas por espaço.',
   }
@@ -322,7 +357,7 @@ EXTRAIA do texto (NÃO reescreva):
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const parsed = safeJsonParse(jsonText, 'gemini')
 
   onProgress?.('Pronto!', 100)
 
@@ -377,7 +412,7 @@ Textos CURTOS e EXTRAÍDOS do original.`
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const parsed = safeJsonParse(jsonText, 'gemini')
 
   const slides: StorySlide[] = (parsed.slides || []).map((s: StorySlide, i: number) => ({
     ...s,
@@ -588,7 +623,7 @@ O título deve ser CURTO e FORTE. O visual deve ser profissional e condizente co
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const parsed = safeJsonParse(jsonText, 'gemini')
 
   onProgress?.('Pronto!', 100)
 
@@ -641,7 +676,7 @@ Retorne APENAS JSON:
 
   const text = result.response.text().trim()
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  return JSON.parse(jsonText)
+  return safeJsonParse(jsonText, 'análise')
 }
 
 export const generateFromReference = async (
@@ -690,7 +725,7 @@ Retorne APENAS JSON:
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const parsed = safeJsonParse(jsonText, 'gemini')
 
   return { ...parsed, layout: 'minimal', generatedAt: new Date().toISOString() }
 }
@@ -851,7 +886,7 @@ Retorne APENAS JSON:
     const captionResult = await textModel.generateContent(captionPrompt)
     const captionText = captionResult.response.text().trim()
     const jsonText = captionText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-    const parsed = JSON.parse(jsonText)
+    const parsed = safeJsonParse(jsonText, 'gemini')
     caption = { hook: parsed.hook || headline, body: parsed.body || subtitle, cta: parsed.cta || '', hashtags: parsed.hashtags || '' }
   } catch { /* use defaults */ }
 
@@ -951,7 +986,7 @@ ${inputs.baseText ? `\nCONTEÚDO BASE (use como referência para criar os storie
   const result = await model.generateContent(prompt)
   const text = result.response.text().trim()
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(jsonText)
+  const parsed = safeJsonParse(jsonText, 'gemini')
 
   const slides: StorySlide[] = (parsed.slides || []).map((s: StorySlide, i: number) => ({
     ...s,
