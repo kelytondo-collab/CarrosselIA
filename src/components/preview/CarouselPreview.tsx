@@ -336,14 +336,22 @@ export default function CarouselPreview() {
   }
 
   const handleDlAll = async () => {
-    const els = slideRefs.current.filter(Boolean) as HTMLElement[]
-    if (!els.length) return
+    if (tab !== 'slides') {
+      setTab('slides')
+      toast('Abrindo aba Slides — clique em Download ZIP novamente em 1s.', { icon: 'ℹ️' })
+      return
+    }
     setDlAllLoading(true)
     const toastId = toast.loading('Exportando ZIP...')
     try {
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const els = slideRefs.current.filter(Boolean) as HTMLElement[]
+      if (!els.length) throw new Error('Nenhum slide renderizado.')
       await exportAllSlidesAsZip(els, currentProject?.name || 'carrossel')
       toast.success('ZIP baixado!', { id: toastId })
-    } catch { toast.error('Erro ao exportar', { id: toastId }) } finally { setDlAllLoading(false) }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao exportar', { id: toastId })
+    } finally { setDlAllLoading(false) }
   }
 
   const copy = (text: string, key: string) => {

@@ -88,7 +88,7 @@ Retorne JSON com esta estrutura exata:
   ],
   "caption": {
     "hook": "1 frase NOVA que abre um loop ou faz uma pergunta que provoca. PROIBIDO copiar o título de qualquer slide (máx 15 palavras).",
-    "body": "2-3 frases curtas com ÂNGULO DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas palavras dos slides. Faça UMA destas: (a) pergunta que abre loop, (b) consequência implícita que desacomoda, (c) confissão pessoal que cria espelho, (d) provocação que questiona uma crença. Máx 50 palavras.",
+    "body": "OBRIGATÓRIO escrever 3 a 4 frases (mínimo 2 frases completas, NUNCA 1 só). Ângulo DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas palavras dos slides. Escolha UMA das abordagens abaixo e DESENVOLVA em várias frases: (a) pergunta que abre loop seguida de provocação, (b) consequência implícita que desacomoda + exemplo curto, (c) confissão pessoal + espelho no leitor, (d) provocação que questiona crença + reframe. Entre 60 e 90 palavras. Use quebra de linha (\\n) entre as frases pra respirar.",
     "cta": "Comenta [PALAVRA] que te envio [BENEFÍCIO]",
     "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível do carrossel"
@@ -122,7 +122,7 @@ REGRA DA LEGENDA — CRÍTICA:
 A legenda É UMA CAMADA NOVA, NÃO um resumo. Os slides ENTREGAM o conteúdo; a legenda DESACOMODA o leitor.
 PROIBIDO: copiar headlines, copiar subtitles, repetir frases dos slides, parafrasear o que está nos cards.
 OBRIGATÓRIO: ângulo NOVO — pergunta que abre loop, consequência implícita, contexto pessoal, ou provocação que mexe com crença.
-Máx 4-5 linhas. Fecha com CTA direto.
+TAMANHO: o body precisa ter 3 a 4 frases (NUNCA uma frase só). Pense entre 60 e 90 palavras no body. Use quebras de linha entre frases pra respirar. Depois fecha com CTA direto.
 Se a legenda parecer um resumo dos slides, REESCREVA até virar uma camada de provocação que complementa.
 `
 
@@ -231,7 +231,7 @@ Retorne JSON:
   ],
   "caption": {
     "hook": "1 frase NOVA que abre loop ou provoca. PROIBIDO copiar título de slide. Use o tom do especialista, mas é frase ORIGINAL (máx 15 palavras).",
-    "body": "2-3 frases curtas com ÂNGULO DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas frases. Faça UMA destas: (a) pergunta que abre loop, (b) consequência implícita que desacomoda, (c) confissão/contexto pessoal, (d) provocação que questiona crença. Máx 50 palavras.",
+    "body": "OBRIGATÓRIO escrever 3 a 4 frases (mínimo 2 frases completas, NUNCA 1 só). Ângulo DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas frases. Escolha UMA das abordagens abaixo e DESENVOLVA em várias frases: (a) pergunta que abre loop seguida de provocação, (b) consequência implícita que desacomoda + exemplo curto, (c) confissão/contexto pessoal + espelho no leitor, (d) provocação que questiona crença + reframe. Entre 60 e 90 palavras. Use quebra de linha (\\n) entre frases pra respirar.",
     "cta": "chamada para ação direta — pode usar a energia do CTA do texto, mas reescreva no formato 'Comenta [PALAVRA] que te envio [BENEFÍCIO]' ou similar curto",
     "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível"
@@ -291,7 +291,7 @@ Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
 
   const sectionDesc: Record<string, string> = {
     hook: 'a PRIMEIRA LINHA da legenda — 1 frase NOVA que abre um loop ou provoca. PROIBIDO copiar título de slide. Frase original que para o scroll (máx 15 palavras).',
-    body: 'o CORPO da legenda — 2-3 frases CURTAS com ÂNGULO DIFERENTE dos slides. PROIBIDO resumir cards ou parafrasear o que está nos slides. Faça UMA destas: (a) pergunta que abre loop, (b) consequência implícita, (c) confissão pessoal, (d) provocação que questiona crença. Máx 50 palavras.',
+    body: 'o CORPO da legenda — 3 a 4 frases (NUNCA 1 só) com ÂNGULO DIFERENTE dos slides. PROIBIDO resumir cards ou parafrasear o que está nos slides. Escolha UMA das abordagens e DESENVOLVA em várias frases: (a) pergunta que abre loop + provocação, (b) consequência implícita + exemplo curto, (c) confissão pessoal + espelho no leitor, (d) provocação que questiona crença + reframe. Entre 60 e 90 palavras. Use quebra de linha entre frases pra respirar.',
     cta: 'a CHAMADA PARA AÇÃO — curta e direta. Ex: "Comenta [PALAVRA] que te envio..."',
     hashtags: '10-15 HASHTAGS relevantes para o nicho, separadas por espaço.',
   }

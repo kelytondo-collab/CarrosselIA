@@ -162,14 +162,17 @@ export default function StoriesPreview() {
   }
 
   const handleDlAll = async () => {
-    const els = slideRefs.current.filter(Boolean) as HTMLElement[]
-    if (!els.length) return
     setDlAllLoading(true)
     const toastId = toast.loading('Exportando ZIP...')
     try {
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const els = slideRefs.current.filter(Boolean) as HTMLElement[]
+      if (!els.length) throw new Error('Nenhum story renderizado.')
       await exportAllSlidesAsZip(els, currentProject?.name || 'stories')
       toast.success('ZIP baixado!', { id: toastId })
-    } catch { toast.error('Erro', { id: toastId }) } finally { setDlAllLoading(false) }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erro', { id: toastId })
+    } finally { setDlAllLoading(false) }
   }
 
   const handlePublishStories = async () => {

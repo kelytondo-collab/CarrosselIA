@@ -4,6 +4,10 @@ import { saveAs } from 'file-saver'
 import type { CarouselData } from '../types'
 
 export const exportSlideAsImage = async (el: HTMLElement, scale = 3.6): Promise<Blob> => {
+  const rect = el.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    throw new Error('Slide nao esta visivel na tela. Volte para a aba "Slides" antes de exportar.')
+  }
   const canvas = await html2canvas(el, {
     scale,
     useCORS: true,
@@ -11,21 +15,45 @@ export const exportSlideAsImage = async (el: HTMLElement, scale = 3.6): Promise<
     backgroundColor: null,
     logging: false,
   })
-  return new Promise(resolve => canvas.toBlob(b => resolve(b!), 'image/png'))
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      b => (b ? resolve(b) : reject(new Error('Falha ao gerar PNG do slide'))),
+      'image/png'
+    )
+  )
+}
+
+const sanitizeName = (name: string): string => {
+  const cleaned = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-.\s]+|[-.\s]+$/g, '')
+    .slice(0, 60)
+  return cleaned || 'slides'
 }
 
 export const exportAllSlidesAsZip = async (
   slideEls: HTMLElement[],
   projectName: string
 ): Promise<void> => {
+  if (!slideEls.length) {
+    throw new Error('Nenhum slide renderizado. Volte para a aba "Slides" antes de baixar o ZIP.')
+  }
+  const safeName = sanitizeName(projectName)
   const zip = new JSZip()
-  const folder = zip.folder(projectName) || zip
   for (let i = 0; i < slideEls.length; i++) {
     const blob = await exportSlideAsImage(slideEls[i])
-    folder.file(`slide-${String(i + 1).padStart(2, '0')}.png`, blob)
+    zip.file(`slide-${String(i + 1).padStart(2, '0')}.png`, blob)
+  }
+  const fileCount = Object.keys(zip.files).length
+  if (fileCount === 0) {
+    throw new Error('Nenhum slide foi capturado. Tente novamente com a aba "Slides" visivel.')
   }
   const content = await zip.generateAsync({ type: 'blob' })
-  saveAs(content, `${projectName}-slides.zip`)
+  saveAs(content, `${safeName}-slides.zip`)
 }
 
 export const exportCaptionAsTxt = (caption: CarouselData['caption'], projectName: string): void => {
