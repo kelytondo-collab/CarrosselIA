@@ -243,6 +243,37 @@ export default function CarouselPreview() {
     reader.readAsDataURL(file)
   }
 
+  const handleImageFromUrl = async (idx: number) => {
+    const url = window.prompt(
+      'Cole a URL pública da imagem (ex: do Wikimedia Commons, Unsplash, etc):\n\nDica: clique direito na imagem na web → "Copiar endereço da imagem".'
+    )?.trim()
+    if (!url) return
+    if (!/^https?:\/\//i.test(url)) {
+      toast.error('URL inválida — precisa começar com http:// ou https://')
+      return
+    }
+    const toastId = toast.loading('Baixando imagem...')
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      if (!blob.type.startsWith('image/')) throw new Error('URL não retornou uma imagem')
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(r.result as string)
+        r.onerror = () => reject(new Error('Erro lendo arquivo'))
+        r.readAsDataURL(blob)
+      })
+      const next = [...slides]
+      next[idx] = { ...next[idx], imageUrl: dataUrl, imageError: undefined }
+      saveSlides(next)
+      toast.success('Imagem carregada!', { id: toastId })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro'
+      toast.error(`Não consegui baixar — ${msg}. Tente baixar a imagem e usar Upload.`, { id: toastId, duration: 5000 })
+    }
+  }
+
   const removeImage = (idx: number) => {
     const next = [...slides]
     next[idx] = { ...next[idx], imageUrl: undefined }
@@ -665,10 +696,19 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
                   {/* Actions */}
                   <div className="flex gap-1" style={{ width: DISP_W }}>
                     {(slideBgTypes[i] === 'photo' || slideBgTypes[i] === 'photo-text') && (
-                      <label className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 text-center cursor-pointer hover:border-violet-400 transition-all">
-                        <Image size={12} className="inline mr-1" />Upload Foto
-                        <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(i, e)} />
-                      </label>
+                      <>
+                        <label className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 text-center cursor-pointer hover:border-violet-400 transition-all">
+                          <Image size={12} className="inline mr-1" />Upload
+                          <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(i, e)} />
+                        </label>
+                        <button
+                          onClick={() => handleImageFromUrl(i)}
+                          className="flex-1 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-gray-700 text-gray-500 hover:border-violet-400 transition-all"
+                          title="Colar URL pública de imagem (ex: Wikimedia, Unsplash)"
+                        >
+                          🔗 Colar URL
+                        </button>
+                      </>
                     )}
                     {slideBgTypes[i] === 'ia' && (
                       <>
