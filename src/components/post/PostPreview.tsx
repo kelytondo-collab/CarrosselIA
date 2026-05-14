@@ -168,9 +168,25 @@ export default function PostPreview() {
     const toastId = toast.loading(`Gerando ${label}...`)
     try {
       const current = postRef.current!
+      const niche = profile?.niche || 'geral'
+      const postTopic = [current.headline, current.subtitle].filter(Boolean).join(' — ')
+      const aiHint = current.visualPrompt && current.visualPrompt.length > 20 ? current.visualPrompt : ''
       const prompt = useExpertPhoto
-        ? (current.visualPrompt || `Fotografia profissional de especialista em ${profile?.niche || 'negócios'}`)
-        : `Fundo abstrato/metafórico para post sobre: "${current.headline}". IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto, SEM logos.`
+        ? `Cenário/ambiente COERENTE com o tema do post onde a pessoa da foto aparecerá.
+TEMA DO POST (cenário precisa representar isto):
+"${postTopic}"
+
+${aiHint ? `Sugestão visual:\n${aiHint}\n\n` : ''}Fotografia editorial cinematográfica, nicho: ${niche}. Iluminação emocional coerente com o tema. Sem texto.`
+        : `Imagem fotográfica COERENTE com o tema do post.
+TEMA DO POST (a imagem precisa representar visualmente isto, NÃO abstrato genérico):
+"${postTopic}"
+
+${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
+- Pode ter pessoas, cenários, objetos, atmosferas — desde que façam SENTIDO com o tema.
+- Foto editorial/cinematográfica, iluminação emocional, alta qualidade.
+- Se o tema é conceitual, use metáfora visual concreta (não gradiente vazio).
+- SEM texto na imagem, SEM logos, SEM marcas d'água.
+- Nicho: ${niche}.`
       const url = await generateSlideImage(prompt, '4:5', useExpertPhoto ? expertPhotoBase64 : undefined)
       savePost({ ...current, imageUrl: url })
       toast.success(`${useExpertPhoto ? 'Foto expert' : 'Fundo'} gerado!`, { id: toastId })

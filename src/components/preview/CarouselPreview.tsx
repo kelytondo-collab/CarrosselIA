@@ -296,10 +296,31 @@ export default function CarouselPreview() {
       next[idx] = { ...next[idx], visualPrompt: prompt }
       setSlides(next)
     }
-    // For background mode, add safe instructions
-    if (!useExpertPhoto && !prompt) {
+    // Always enrich prompt with slide content so image is coherent with what's written
+    if (!prompt) {
       const slide = slides[idx]
-      finalPrompt = `Fundo abstrato/metafórico para slide sobre: "${slide.headline}". ${finalPrompt || ''}. IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto, SEM logos.`
+      const slideTopic = [slide.headline, slide.subtitle].filter(Boolean).join(' — ')
+      const aiHint = finalPrompt && finalPrompt.length > 20 ? finalPrompt : ''
+      const niche = getDefaultProfile()?.niche || 'geral'
+
+      if (useExpertPhoto) {
+        finalPrompt = `Cenário/ambiente COERENTE com o tema do slide onde a pessoa da foto aparecerá.
+TEMA DO SLIDE (o cenário precisa representar visualmente isto):
+"${slideTopic}"
+
+${aiHint ? `Sugestão visual:\n${aiHint}\n\n` : ''}Cenário fotográfico realista, editorial, cinematográfico — nicho: ${niche}. Iluminação emocional coerente com o tema. Sem texto na imagem.`
+      } else {
+        finalPrompt = `Imagem fotográfica COERENTE com o tema do slide.
+TEMA DO SLIDE (a imagem precisa representar visualmente isto, não algo abstrato genérico):
+"${slideTopic}"
+
+${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
+- Pode ter pessoas, cenários, objetos, atmosferas — desde que façam SENTIDO com o tema acima.
+- Foto editorial/cinematográfica, iluminação emocional, alta qualidade.
+- Se o tema é abstrato/conceitual (ex: "padrões invisíveis"), use metáfora visual concreta (ex: pessoa olhando um espelho com reflexo distorcido — NÃO gradiente colorido vazio).
+- SEM texto na imagem, SEM logos, SEM marcas d'água.
+- Nicho: ${niche}.`
+      }
     }
     setPromptEditIdx(null)
     setGeneratingImg(prev => new Set([...prev, idx]))

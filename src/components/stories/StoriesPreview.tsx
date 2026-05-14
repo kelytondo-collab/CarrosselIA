@@ -132,12 +132,27 @@ export default function StoriesPreview() {
     const toastId = toast.loading(`Gerando ${label} story ${idx + 1}...`)
     try {
       const slide = slides[idx]
+      const niche = profile?.niche || 'geral'
+      const slideTopic = [slide.headline, slide.body].filter(Boolean).join(' — ')
+      const aiHint = slide.visualPrompt && slide.visualPrompt.length > 20 ? slide.visualPrompt : ''
       let prompt: string
       if (useExpertPhoto) {
-        prompt = slide.visualPrompt || `Fotografia profissional de especialista em ${profile?.niche || 'negócios'}, formato vertical stories`
+        prompt = `Cenário/ambiente COERENTE com o tema do story onde a pessoa da foto aparecerá. Formato vertical 9:16.
+TEMA DO STORY (cenário precisa representar isto):
+"${slideTopic}"
+
+${aiHint ? `Sugestão visual:\n${aiHint}\n\n` : ''}Fotografia editorial cinematográfica, nicho: ${niche}. Iluminação emocional coerente com o tema. Sem texto.`
       } else {
-        const contentContext = `Fundo abstrato/metafórico para story sobre: "${slide.headline}". ${slide.body ? `Contexto: ${slide.body.slice(0, 100)}` : ''}`
-        prompt = `${slide.visualPrompt || contentContext}. IMPORTANTE: Fundo abstrato, texturas, gradientes ou metáfora visual. SEM rostos humanos, SEM texto escrito na imagem, SEM logos.`
+        prompt = `Imagem fotográfica vertical (9:16) COERENTE com o tema do story.
+TEMA DO STORY (a imagem precisa representar visualmente isto, NÃO algo abstrato genérico):
+"${slideTopic}"
+
+${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
+- Pode ter pessoas, cenários, objetos, atmosferas — desde que façam SENTIDO com o tema.
+- Foto editorial/cinematográfica, iluminação emocional, alta qualidade.
+- Se o tema é conceitual, use metáfora visual concreta (não gradiente vazio).
+- SEM texto na imagem, SEM logos, SEM marcas d'água.
+- Nicho: ${niche}.`
       }
       const url = await generateSlideImage(prompt, '9:16', useExpertPhoto ? expertPhotoBase64 : undefined)
       const next = [...slides]; next[idx] = { ...next[idx], imageUrl: url }

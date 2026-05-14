@@ -5,7 +5,7 @@ import type { View } from '../../contexts/AppContext'
 import type { Tone, StoryType, StoriesInputs, StoriesData } from '../../types'
 import { getDefaultProfile, createSimpleProject, updateProjectStories } from '../../services/storageService'
 import { generateStoriesCopy, generateStoriesFormat } from '../../services/geminiService'
-import { parseLuminaeContent } from '../../services/luminaeParser'
+import { parseLuminaeContent, splitTextIntoSlides } from '../../services/luminaeParser'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
 
@@ -76,8 +76,32 @@ export default function StoriesEditor() {
       return
     }
 
-    // Fallback: FORMAT mode
-    if (!apiKey) { toast.error('Configure sua chave Gemini'); return }
+    // Plain text: split locally by paragraphs (NO AI, zero modification)
+    const localSlides = splitTextIntoSlides(luminaeText, storyCount)
+    if (localSlides.length > 0) {
+      const storiesData: StoriesData = {
+        slides: localSlides.map((s, i) => ({
+          id: i + 1,
+          type: 'content' as StoryType,
+          headline: s.headline,
+          body: s.subtitle,
+          visualPrompt: '',
+          layout: 'minimal' as const,
+        })),
+        caption: { hook: '', body: '', cta: '', hashtags: '', altText: '' },
+        generatedAt: new Date().toISOString(),
+      }
+      const project = createSimpleProject('Luminae Stories', localSlides[0].headline.slice(0, 40), 'stories')
+      updateProjectStories(project.id, storiesData)
+      refreshProjects()
+      setCurrentProject({ ...project, current_stories_data: storiesData })
+      setView('stories-preview' as View)
+      toast.success('Stories importados (texto preservado)!')
+      return
+    }
+
+    // Only as last resort: AI format mode (when local split returned nothing)
+    if (!apiKey) { toast.error('Cole texto com parágrafos ou configure Gemini'); return }
 
     setIsGenerating(true)
     setGenerationProgress(0)

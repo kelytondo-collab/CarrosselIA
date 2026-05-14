@@ -88,7 +88,7 @@ Retorne JSON com esta estrutura exata:
   ],
   "caption": {
     "hook": "1 frase NOVA que abre um loop ou faz uma pergunta que provoca. PROIBIDO copiar o título de qualquer slide (máx 15 palavras).",
-    "body": "OBRIGATÓRIO escrever 3 a 4 frases (mínimo 2 frases completas, NUNCA 1 só). Ângulo DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas palavras dos slides. Escolha UMA das abordagens abaixo e DESENVOLVA em várias frases: (a) pergunta que abre loop seguida de provocação, (b) consequência implícita que desacomoda + exemplo curto, (c) confissão pessoal + espelho no leitor, (d) provocação que questiona crença + reframe. Entre 60 e 90 palavras. Use quebra de linha (\\n) entre as frases pra respirar.",
+    "body": "MÍNIMO 4 FRASES COMPLETAS, MÍNIMO 250 CARACTERES. UMA frase só ou 2 frases = REJEITADO. Ângulo DIFERENTE dos slides — NÃO resuma cards, NÃO use as mesmas palavras dos slides. Escolha UMA abordagem e DESENVOLVA em 4+ frases: (a) pergunta loop + provocação + consequência + reframe, (b) confissão pessoal + espelho + dor não-dita + virada, (c) provocação de crença + por quê dói + o que ninguém contou + reframe, (d) cena/contexto + tensão + virada + insight. Entre 250 e 600 caracteres totais. Use \\n entre frases. EXEMPLO de estrutura: 'Você já parou pra ver quantas vezes repete o mesmo padrão?\\n\\nA gente acha que é falta de esforço.\\n\\nMas no fundo é uma escolha invisível rodando há anos.\\n\\nQuando você vê o programa, ele perde força.'",
     "cta": "Comenta [PALAVRA] que te envio [BENEFÍCIO]",
     "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível do carrossel"
@@ -158,6 +158,21 @@ Se a legenda parecer um resumo dos slides, REESCREVA até virar uma camada de pr
     parsed.caption.body = parsed.caption.body || ''
     parsed.caption.cta = parsed.caption.cta || ''
     parsed.caption.hashtags = parsed.caption.hashtags || ''
+  }
+
+  // Retry body if it came back too short (Gemini sometimes returns 1 sentence)
+  if ((parsed.caption.body || '').length < 200) {
+    try {
+      onProgress?.('Reforçando legenda...', 90)
+      const longerBody = await regenerateCaptionSection(
+        'body',
+        parsed.caption,
+        { niche: inputs.niche, tone: inputs.tone, theme: inputs.theme },
+      )
+      if (longerBody && longerBody.length > (parsed.caption.body || '').length) {
+        parsed.caption.body = longerBody
+      }
+    } catch { /* mantém o body curto se falhar */ }
   }
 
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
@@ -231,7 +246,7 @@ Retorne JSON:
   ],
   "caption": {
     "hook": "1 frase NOVA que abre loop ou provoca. PROIBIDO copiar título de slide. Use o tom do especialista, mas é frase ORIGINAL (máx 15 palavras).",
-    "body": "OBRIGATÓRIO escrever 3 a 4 frases (mínimo 2 frases completas, NUNCA 1 só). Ângulo DIFERENTE dos slides. NÃO resuma os cards. NÃO use as mesmas frases. Escolha UMA das abordagens abaixo e DESENVOLVA em várias frases: (a) pergunta que abre loop seguida de provocação, (b) consequência implícita que desacomoda + exemplo curto, (c) confissão/contexto pessoal + espelho no leitor, (d) provocação que questiona crença + reframe. Entre 60 e 90 palavras. Use quebra de linha (\\n) entre frases pra respirar.",
+    "body": "MÍNIMO 4 FRASES COMPLETAS, MÍNIMO 250 CARACTERES. UMA frase só ou 2 frases = REJEITADO. Ângulo DIFERENTE dos slides — NÃO resuma cards, NÃO use as mesmas frases. Escolha UMA abordagem e DESENVOLVA em 4+ frases: (a) pergunta loop + provocação + consequência + reframe, (b) confissão pessoal + espelho + dor não-dita + virada, (c) provocação de crença + por quê dói + o que ninguém contou + reframe, (d) cena/contexto + tensão + virada + insight. Entre 250 e 600 caracteres totais. Use \\n entre frases. EXEMPLO de estrutura: 'Você já parou pra ver quantas vezes repete o mesmo padrão?\\n\\nA gente acha que é falta de esforço.\\n\\nMas no fundo é uma escolha invisível rodando há anos.\\n\\nQuando você vê o programa, ele perde força.'",
     "cta": "chamada para ação direta — pode usar a energia do CTA do texto, mas reescreva no formato 'Comenta [PALAVRA] que te envio [BENEFÍCIO]' ou similar curto",
     "hashtags": "#hashtag1 #hashtag2 ... (máx 15)",
     "altText": "descrição acessível"
@@ -254,6 +269,21 @@ IMPORTANTE:
 
   const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
   const parsed = safeJsonParse<CarouselData>(jsonText, 'carrossel')
+
+  // Retry body if Gemini returned too short
+  if (parsed.caption && (parsed.caption.body || '').length < 200) {
+    try {
+      onProgress?.('Reforçando legenda...', 90)
+      const longerBody = await regenerateCaptionSection(
+        'body',
+        parsed.caption,
+        { niche: inputs.niche, tone: inputs.tone },
+      )
+      if (longerBody && longerBody.length > (parsed.caption.body || '').length) {
+        parsed.caption.body = longerBody
+      }
+    } catch { /* keeps short body if retry fails */ }
+  }
 
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
     ...s,
@@ -291,7 +321,21 @@ Retorne APENAS o texto solicitado, sem JSON, sem aspas, sem marcadores.`,
 
   const sectionDesc: Record<string, string> = {
     hook: 'a PRIMEIRA LINHA da legenda — 1 frase NOVA que abre um loop ou provoca. PROIBIDO copiar título de slide. Frase original que para o scroll (máx 15 palavras).',
-    body: 'o CORPO da legenda — 3 a 4 frases (NUNCA 1 só) com ÂNGULO DIFERENTE dos slides. PROIBIDO resumir cards ou parafrasear o que está nos slides. Escolha UMA das abordagens e DESENVOLVA em várias frases: (a) pergunta que abre loop + provocação, (b) consequência implícita + exemplo curto, (c) confissão pessoal + espelho no leitor, (d) provocação que questiona crença + reframe. Entre 60 e 90 palavras. Use quebra de linha entre frases pra respirar.',
+    body: `o CORPO da legenda. REGRAS DE TAMANHO INEGOCIÁVEIS:
+- MÍNIMO 4 frases completas, MÍNIMO 250 caracteres. Pode ir até 600 chars.
+- UMA frase só é REJEITADO. Duas frases é REJEITADO. Três frases é o piso aceitável.
+- Use quebra de linha (\\n) entre frases para respirar.
+
+CONTEÚDO:
+- Ângulo NOVO, DIFERENTE dos slides. PROIBIDO resumir cards ou parafrasear slides.
+- Escolha UMA destas abordagens e DESENVOLVA em 4+ frases (não uma frase só por abordagem):
+  (a) Pergunta que abre loop + provocação que aprofunda + consequência implícita + reframe
+  (b) Confissão pessoal + espelho no leitor + dor não-dita + virada/insight
+  (c) Provocação que questiona crença + por quê dói + o que ninguém te contou + reframe
+  (d) Cena/contexto + tensão + virada + insight final
+
+EXEMPLO DE BODY ACEITÁVEL (estrutura, não conteúdo):
+"Você já parou pra ver quantas vezes repete o mesmo padrão sem perceber?\\n\\nA gente acha que é falta de esforço, de foco, de disciplina.\\n\\nMas no fundo é uma escolha invisível rodando há anos, herdada de quem veio antes.\\n\\nQuando você vê o programa, ele perde força. Antes disso, é você contra você mesma."`,
     cta: 'a CHAMADA PARA AÇÃO — curta e direta. Ex: "Comenta [PALAVRA] que te envio..."',
     hashtags: '10-15 HASHTAGS relevantes para o nicho, separadas por espaço.',
   }
@@ -378,34 +422,43 @@ export const generateStoriesFormat = async (
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um FORMATADOR, NÃO um escritor.
-REGRAS: NÃO reescreva. Use as palavras EXATAS. DISTRIBUA em stories verticais.
+    systemInstruction: `Você é um FORMATADOR PURO, NÃO um escritor.
+REGRA INEGOCIÁVEL: NÃO reescreva NENHUMA palavra. NÃO resuma. NÃO parafraseie. NÃO "melhore".
+Use as palavras EXATAS do especialista, na ordem original. Apenas DISTRIBUA o texto entre os stories.
 Retorne APENAS JSON válido.`,
   })
 
   const prompt = `
-TEXTO DO ESPECIALISTA:
+TEXTO DO ESPECIALISTA (use EXATAMENTE estas palavras, nada de reescrever):
 ---
 ${baseText}
 ---
 
-Distribua em ${storyCount} STORIES (1080x1920 vertical).
-EXTRAIA do texto (NÃO reescreva):
+Distribua o texto acima em ${storyCount} STORIES (1080x1920 vertical) SEM MODIFICAR uma palavra sequer.
+
+REGRAS DE DISTRIBUIÇÃO:
+1. NÃO trunque frases. NÃO corte palavras. NÃO substitua sinônimos. NÃO "encurte".
+2. Se uma frase tem 200 caracteres, ela vai inteira pro headline OU body — NÃO tenta cortar pra "caber em 40 chars".
+3. Quebre o texto pelos PARÁGRAFOS ou IDEIAS NATURAIS. Cada story = um parágrafo/ideia completa do original.
+4. Dentro de cada story: a PRIMEIRA frase do bloco vai em "headline"; o RESTO do bloco vai em "body" (preserve quebras de linha com \\n).
+5. Se o texto tem MAIS blocos que ${storyCount}, junte blocos pequenos. Se tem MENOS, mantenha o número de blocos reais (NÃO inventa).
+
+EXTRAIA do texto (preservando exato):
 {
   "slides": [
-    { "id": 1, "type": "content", "headline": "frase EXATA (até 40 chars)", "body": "complemento EXATO (até 80 chars)", "visualPrompt": "descrição visual" }
+    { "id": 1, "type": "content", "headline": "primeira frase EXATA do bloco (sem cortar, sem reescrever)", "body": "resto do bloco EXATO, com quebras de linha preservadas", "visualPrompt": "descrição visual fotográfica do tema deste story específico — pessoa, cenário, iluminação, emoção, sem texto na imagem" }
   ],
   "caption": {
-    "hook": "EXTRAIA do texto",
-    "body": "EXTRAIA do texto",
-    "cta": "EXTRAIA do texto",
+    "hook": "EXTRAIA do texto — primeira frase impactante",
+    "body": "EXTRAIA do texto — parte central, palavras exatas",
+    "cta": "EXTRAIA do texto — chamada para ação se houver",
     "hashtags": "",
     "altText": ""
   }
 }
 
-Story 1 = gancho. Último = CTA. Intermediários = conteúdo.
-Textos CURTOS e EXTRAÍDOS do original.`
+Story 1 = gancho (início do texto). Último = fechamento/CTA. Intermediários = conteúdo principal.
+Texto INTEGRAL, palavras EXATAS, SEM REESCREVER.`
 
   onProgress?.('Processando...', 60)
 
