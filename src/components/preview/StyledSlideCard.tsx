@@ -38,7 +38,8 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
     const isCta = variant === 'gold-cta'
 
     // ONLY cover/CTA use photos — content slides are ALWAYS solid color
-    const coverPhoto = expertPhoto || slide.imageUrl
+    // Priority: slide-specific image (topic) wins over expert photo (cadastered)
+    const coverPhoto = slide.imageUrl || expertPhoto
     const bg = (isCover || isCta)
       ? coverPhoto
         ? `linear-gradient(to bottom, rgba(26,16,8,0.25) 0%, rgba(26,16,8,0.82) 55%, rgba(26,16,8,0.96) 100%), url(${coverPhoto}) center/cover no-repeat`
@@ -380,7 +381,8 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
     const isWhite = variant === 'edit-white'
     const hasPhotoOverlay = isCover || isPhoto
 
-    const photoSrc = isPhoto ? (slide.imageUrl || expertPhoto) : (isCover ? (expertPhoto || slide.imageUrl) : undefined)
+    // Priority: slide-specific image (topic) wins over expert photo (cadastered)
+    const photoSrc = isPhoto ? (slide.imageUrl || expertPhoto) : (isCover ? (slide.imageUrl || expertPhoto) : undefined)
     const bg = hasPhotoOverlay && photoSrc
       ? `linear-gradient(to bottom, rgba(17,17,17,0.15) 0%, rgba(17,17,17,0.8) 50%, rgba(17,17,17,0.96) 100%), url(${photoSrc}) center/cover no-repeat`
       : isAccent ? pal.accent
