@@ -161,18 +161,27 @@ Se a legenda parecer um resumo dos slides, REESCREVA até virar uma camada de pr
   }
 
   // Retry body if it came back too short (Gemini sometimes returns 1 sentence)
+  // Tries up to 2 times, passing baseText so model has source material
   if ((parsed.caption.body || '').length < 200) {
-    try {
-      onProgress?.('Reforçando legenda...', 90)
-      const longerBody = await regenerateCaptionSection(
-        'body',
-        parsed.caption,
-        { niche: inputs.niche, tone: inputs.tone, theme: inputs.theme },
-      )
-      if (longerBody && longerBody.length > (parsed.caption.body || '').length) {
-        parsed.caption.body = longerBody
+    onProgress?.('Reforçando legenda...', 90)
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const longerBody = await regenerateCaptionSection(
+          'body',
+          parsed.caption,
+          { niche: inputs.niche, tone: inputs.tone, theme: inputs.theme, sourceText: inputs.baseText },
+        )
+        if (longerBody && longerBody.length > (parsed.caption.body || '').length) {
+          parsed.caption.body = longerBody
+        }
+        if ((parsed.caption.body || '').length >= 200) break
+      } catch (err) {
+        console.error(`[caption retry ${attempt}/2 — generateCarouselCopy] falhou:`, err)
       }
-    } catch { /* mantém o body curto se falhar */ }
+    }
+    if ((parsed.caption.body || '').length < 200) {
+      console.warn('[caption retry] body continuou curto após 2 tentativas — body atual:', parsed.caption.body)
+    }
   }
 
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
@@ -271,18 +280,27 @@ IMPORTANTE:
   const parsed = safeJsonParse<CarouselData>(jsonText, 'carrossel')
 
   // Retry body if Gemini returned too short
+  // Tries up to 2 times, passing baseText so model has source material
   if (parsed.caption && (parsed.caption.body || '').length < 200) {
-    try {
-      onProgress?.('Reforçando legenda...', 90)
-      const longerBody = await regenerateCaptionSection(
-        'body',
-        parsed.caption,
-        { niche: inputs.niche, tone: inputs.tone },
-      )
-      if (longerBody && longerBody.length > (parsed.caption.body || '').length) {
-        parsed.caption.body = longerBody
+    onProgress?.('Reforçando legenda...', 90)
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const longerBody = await regenerateCaptionSection(
+          'body',
+          parsed.caption,
+          { niche: inputs.niche, tone: inputs.tone, sourceText: inputs.baseText },
+        )
+        if (longerBody && longerBody.length > (parsed.caption.body || '').length) {
+          parsed.caption.body = longerBody
+        }
+        if ((parsed.caption.body || '').length >= 200) break
+      } catch (err) {
+        console.error(`[caption retry ${attempt}/2 — generateCarouselFormat] falhou:`, err)
       }
-    } catch { /* keeps short body if retry fails */ }
+    }
+    if ((parsed.caption.body || '').length < 200) {
+      console.warn('[caption retry] body continuou curto após 2 tentativas — body atual:', parsed.caption.body)
+    }
   }
 
   const slides: SlideData[] = (parsed.slides || []).map((s, i) => ({
@@ -307,7 +325,7 @@ IMPORTANTE:
 export const regenerateCaptionSection = async (
   section: 'hook' | 'body' | 'cta' | 'hashtags',
   currentCaption: Caption,
-  context: { niche: string; tone: Tone; theme?: string },
+  context: { niche: string; tone: Tone; theme?: string; sourceText?: string },
   voiceBlueprint?: string,
 ): Promise<string> => {
   if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
@@ -343,6 +361,11 @@ EXEMPLO DE BODY ACEITÁVEL (estrutura, não conteúdo):
   const prompt = `
 Reescreva APENAS ${sectionDesc[section]}
 
+${context.sourceText ? `TEXTO ORIGINAL (use como matéria-prima para escrever a seção, mas com ÂNGULO NOVO — NÃO copie frases literais):
+---
+${context.sourceText}
+---
+` : ''}
 Contexto da legenda atual:
 - Hook: ${currentCaption.hook}
 - Corpo: ${currentCaption.body}
