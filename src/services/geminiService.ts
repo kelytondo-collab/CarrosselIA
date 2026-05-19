@@ -320,6 +320,90 @@ IMPORTANTE:
   }
 }
 
+// ── Generate complete caption FROM existing slides (used on Luminae import) ──
+
+export const generateCaptionFromSlides = async (
+  slides: Array<{ headline?: string; subtitle?: string }>,
+  context: { niche: string; tone: Tone; theme?: string },
+  voiceBlueprint?: string,
+): Promise<Caption> => {
+  if (!genAI) throw new Error('Configure sua chave Gemini nas configurações')
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    systemInstruction: `Você é um copywriter expert para Instagram. Nicho: ${context.niche}. Tom: ${context.tone}.
+${voiceBlueprint ? `BLUEPRINT DA VOZ:\n${voiceBlueprint}` : ''}
+Retorne APENAS JSON válido, sem markdown.`,
+  })
+
+  const slidesText = slides
+    .map((s, i) => `Slide ${i + 1}: ${s.headline || ''}${s.subtitle ? ` — ${s.subtitle}` : ''}`)
+    .join('\n')
+
+  const prompt = `
+Escreva uma LEGENDA DE INSTAGRAM COMPLETA para um carrossel que tem estes slides:
+---
+${slidesText}
+---
+${context.theme ? `\nTema do carrossel: ${context.theme}\n` : ''}
+A legenda é uma CAMADA NOVA, complementar aos slides — NÃO um resumo deles.
+
+REGRAS INEGOCIÁVEIS:
+- hook: 1 frase NOVA que abre loop ou provoca (PROIBIDO copiar título de slide). Máx 15 palavras.
+- body: MÍNIMO 4 frases completas, MÍNIMO 250 caracteres, máx 600. UMA frase só = REJEITADO. Use \\n entre frases. Ângulo DIFERENTE dos slides — escolha UMA destas abordagens e DESENVOLVA: (a) pergunta loop + provocação + consequência + reframe, (b) confissão pessoal + espelho + dor não-dita + virada, (c) provocação de crença + por quê dói + o que ninguém contou + reframe, (d) cena/contexto + tensão + virada + insight.
+- cta: chamada direta, curta. Ex: "Comenta [PALAVRA] que te envio [BENEFÍCIO]" ou "Salva pra quando precisar".
+- hashtags: 10-15 hashtags relevantes ao nicho, separadas por espaço, com #.
+
+EXEMPLO de body aceitável (estrutura, não conteúdo):
+"Você já parou pra ver quantas vezes repete o mesmo padrão sem perceber?\\n\\nA gente acha que é falta de esforço, de foco, de disciplina.\\n\\nMas no fundo é uma escolha invisível rodando há anos.\\n\\nQuando você vê o programa, ele perde força."
+
+Retorne JSON:
+{
+  "hook": "...",
+  "body": "...",
+  "cta": "...",
+  "hashtags": "#tag1 #tag2 ...",
+  "altText": "descrição acessível do carrossel"
+}`
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim()
+  const parsed = safeJsonParse<Caption>(jsonText, 'caption')
+
+  const caption: Caption = {
+    hook: parsed.hook || '',
+    body: parsed.body || '',
+    cta: parsed.cta || '',
+    hashtags: parsed.hashtags || '',
+    altText: parsed.altText || '',
+  }
+
+  // Retry body if it came back too short (same logic as the carousel generators)
+  if ((caption.body || '').length < 200) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const longerBody = await regenerateCaptionSection(
+          'body',
+          caption,
+          { niche: context.niche, tone: context.tone, theme: context.theme, sourceText: slidesText },
+        )
+        if (longerBody && longerBody.length > (caption.body || '').length) {
+          caption.body = longerBody
+        }
+        if ((caption.body || '').length >= 200) break
+      } catch (err) {
+        console.error(`[caption retry ${attempt}/2 — generateCaptionFromSlides] falhou:`, err)
+      }
+    }
+    if ((caption.body || '').length < 200) {
+      console.warn('[caption retry] body continuou curto após 2 tentativas — body atual:', caption.body)
+    }
+  }
+
+  return caption
+}
+
 // ── Regenerate single caption section ──
 
 export const regenerateCaptionSection = async (

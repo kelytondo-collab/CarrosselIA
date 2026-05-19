@@ -21,6 +21,7 @@ import ReelsConexaoEditor from './components/video/ReelsConexaoEditor'
 import ReelsRecordEditor from './components/video/ReelsRecordEditor'
 import LoginScreen from './components/auth/LoginScreen'
 import { getDefaultProfile, createSimpleProject, updateProjectCarousel, updateProjectPost, updateProjectStories } from './services/storageService'
+import { generateCaptionFromSlides } from './services/geminiService'
 import { saveInstagramToken, ensureLoggedIn } from './services/apiService'
 import toast from 'react-hot-toast'
 
@@ -122,7 +123,31 @@ function AppContent() {
         setCurrentProject({ ...project, current_carousel_data: carousel as any })
         setCurrentCarousel(carousel as any)
         setView('preview')
-        toast.success(autoStyle ? 'Carrossel pronto! Estilo aplicado automaticamente.' : 'Carrossel importado do Luminae!')
+        toast.success(autoStyle ? 'Carrossel pronto! Gerando legenda...' : 'Carrossel importado! Gerando legenda...')
+
+        // Carrossel gera sua própria legenda a partir dos slides (Luminae só manda conteúdo)
+        const profile = getDefaultProfile()
+        const captionToastId = toast.loading('Gerando legenda...')
+        generateCaptionFromSlides(
+          carouselSlides.map((s) => ({ headline: s.headline, subtitle: s.subtitle })),
+          {
+            niche: profile?.niche || '',
+            tone: profile?.tone || 'professional',
+            theme: slides[0]?.headline || '',
+          },
+          profile?.voiceBlueprint,
+        )
+          .then((newCaption) => {
+            const updated = { ...carousel, caption: newCaption }
+            updateProjectCarousel(project.id, updated as any)
+            setCurrentCarousel(updated as any)
+            setCurrentProject({ ...project, current_carousel_data: updated as any })
+            toast.success('Legenda pronta!', { id: captionToastId })
+          })
+          .catch((err) => {
+            console.error('[caption gen on luminae import] falhou:', err)
+            toast.error('Não consegui gerar legenda — regenere manualmente no editor.', { id: captionToastId, duration: 5000 })
+          })
       } else if (tipo === 'post') {
         // Post Instagram: subtitle VAZIO — conteúdo vai só na legenda (caption.body)
         // Se subtitle vier preenchido, move pra caption.body pra não aparecer na imagem
