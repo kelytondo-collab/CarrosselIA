@@ -129,10 +129,10 @@ function AppContent() {
         const profile = getDefaultProfile()
         const captionToastId = toast.loading('Gerando legenda...')
         generateCaptionFromSlides(
-          carouselSlides.map((s) => ({ headline: s.headline, subtitle: s.subtitle })),
+          carouselSlides.map((s: { headline: string; subtitle: string }) => ({ headline: s.headline, subtitle: s.subtitle })),
           {
             niche: profile?.niche || '',
-            tone: profile?.tone || 'professional',
+            tone: profile?.tone || 'profissional',
             theme: slides[0]?.headline || '',
           },
           profile?.voiceBlueprint,
