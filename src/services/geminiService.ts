@@ -320,7 +320,10 @@ IMPORTANTE:
   }
 }
 
-// ── Generate complete caption FROM existing slides (used on Luminae import) ──
+// ── Generate complementary caption (used on Luminae import) ──
+// Caption is a NEW layer that complements the carousel + drives action.
+// SLIDES ARE NOT PASSED TO GEMINI — it only knows the topic, not the slide content.
+// This forces a complementary caption instead of a copy/paraphrase.
 
 export const generateCaptionFromSlides = async (
   slides: Array<{ headline?: string; subtitle?: string }>,
@@ -331,31 +334,32 @@ export const generateCaptionFromSlides = async (
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    systemInstruction: `Você é um copywriter expert para Instagram. Nicho: ${context.niche}. Tom: ${context.tone}.
+    systemInstruction: `Você é um copywriter de Instagram que escreve legendas COMPLEMENTARES a carrosséis. Nicho: ${context.niche}. Tom: ${context.tone}.
 ${voiceBlueprint ? `BLUEPRINT DA VOZ:\n${voiceBlueprint}` : ''}
+
+Princípio: o carrossel ENTREGA o conteúdo (o leitor vai ver lá). A legenda é o PS do post — provoca uma reflexão extra ou faz convite pra ação. Curta, afiada, sem rodeio. NÃO replica o conteúdo do carrossel.
 Retorne APENAS JSON válido, sem markdown.`,
   })
 
-  const slidesText = slides
-    .map((s, i) => `Slide ${i + 1}: ${s.headline || ''}${s.subtitle ? ` — ${s.subtitle}` : ''}`)
-    .join('\n')
+  // Topic only — never pass slide bodies/subtitles to avoid the model copying them.
+  const topic = context.theme || slides[0]?.headline || ''
 
   const prompt = `
-Escreva uma LEGENDA DE INSTAGRAM COMPLETA para um carrossel que tem estes slides:
----
-${slidesText}
----
-${context.theme ? `\nTema do carrossel: ${context.theme}\n` : ''}
-A legenda é uma CAMADA NOVA, complementar aos slides — NÃO um resumo deles.
+TÓPICO DO CARROSSEL: "${topic}"
 
-REGRAS INEGOCIÁVEIS:
-- hook: 1 frase NOVA que abre loop ou provoca (PROIBIDO copiar título de slide). Máx 15 palavras.
-- body: MÍNIMO 4 frases completas, MÍNIMO 250 caracteres, máx 600. UMA frase só = REJEITADO. Use \\n entre frases. Ângulo DIFERENTE dos slides — escolha UMA destas abordagens e DESENVOLVA: (a) pergunta loop + provocação + consequência + reframe, (b) confissão pessoal + espelho + dor não-dita + virada, (c) provocação de crença + por quê dói + o que ninguém contou + reframe, (d) cena/contexto + tensão + virada + insight.
-- cta: chamada direta, curta. Ex: "Comenta [PALAVRA] que te envio [BENEFÍCIO]" ou "Salva pra quando precisar".
+Escreva uma legenda de Instagram CURTA e COMPLEMENTAR sobre esse tópico. Você NÃO está vendo os slides do carrossel de propósito — o conteúdo principal já está lá. Sua função é provocar + chamar pra ação.
+
+REGRAS:
+- hook: 1 frase de impacto que para o scroll. NOVA, não título de slide. Máx 12 palavras.
+- body: 2 a 3 frases CURTAS (entre 80 e 280 caracteres total). Use \\n entre frases pra respirar. NÃO desenvolva o tema — apenas adicione UMA camada nova (pergunta, provocação, micro-cena, ou observação que aprofunda). PROIBIDO virar um mini-ensaio paralelo ao carrossel.
+- cta: 1 chamada de ação direta e específica. Convite pra DM, comentário, salvar, ou clicar no link da bio.
 - hashtags: 10-15 hashtags relevantes ao nicho, separadas por espaço, com #.
 
-EXEMPLO de body aceitável (estrutura, não conteúdo):
-"Você já parou pra ver quantas vezes repete o mesmo padrão sem perceber?\\n\\nA gente acha que é falta de esforço, de foco, de disciplina.\\n\\nMas no fundo é uma escolha invisível rodando há anos.\\n\\nQuando você vê o programa, ele perde força."
+EXEMPLO de body aceitável (ESTRUTURA, não conteúdo — você escreve sobre o tópico do carrossel):
+"Esse padrão raramente aparece no comportamento — aparece no que você evita.\\n\\nE evitar parece coerência. Mas é só o programa rodando em silêncio."
+
+EXEMPLO de body REJEITADO (longo, desenvolve o tema, vira ensaio):
+"Você não falhou porque é fraco. Você falhou porque estava usando a ferramenta errada. Quanto mais luta contra a resistência, mais energia injeta nela..." [continua por mais 6 parágrafos cobrindo cada slide]
 
 Retorne JSON:
 {
@@ -363,7 +367,7 @@ Retorne JSON:
   "body": "...",
   "cta": "...",
   "hashtags": "#tag1 #tag2 ...",
-  "altText": "descrição acessível do carrossel"
+  "altText": "descrição acessível do carrossel sobre ${topic}"
 }`
 
   const result = await model.generateContent(prompt)
@@ -379,24 +383,25 @@ Retorne JSON:
     altText: parsed.altText || '',
   }
 
-  // Retry body if it came back too short (same logic as the carousel generators)
-  if ((caption.body || '').length < 200) {
+  // Retry body if it came back too short (< 60 chars = provavelmente vazio ou só 1 frase mínima)
+  // Note: sourceText do retry passa só o tópico, NÃO os slides, pra evitar cópia
+  if ((caption.body || '').length < 60) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const longerBody = await regenerateCaptionSection(
           'body',
           caption,
-          { niche: context.niche, tone: context.tone, theme: context.theme, sourceText: slidesText },
+          { niche: context.niche, tone: context.tone, theme: topic },
         )
         if (longerBody && longerBody.length > (caption.body || '').length) {
           caption.body = longerBody
         }
-        if ((caption.body || '').length >= 200) break
+        if ((caption.body || '').length >= 60) break
       } catch (err) {
         console.error(`[caption retry ${attempt}/2 — generateCaptionFromSlides] falhou:`, err)
       }
     }
-    if ((caption.body || '').length < 200) {
+    if ((caption.body || '').length < 60) {
       console.warn('[caption retry] body continuou curto após 2 tentativas — body atual:', caption.body)
     }
   }
