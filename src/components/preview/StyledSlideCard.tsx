@@ -514,6 +514,247 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
   }
 
   // ══════════════════════════════════════════
+  // ELEGANTE — champagne + vinho + dourado, serif Playfair
+  // ══════════════════════════════════════════
+  if (variant.startsWith('elegante-')) {
+    const isCover = variant === 'elegante-cover-photo'
+    const isList = variant === 'elegante-content-list'
+    const isCta = variant === 'elegante-cta'
+    const isText = variant === 'elegante-content-text'
+
+    const photo = slide.imageUrl || expertPhoto
+    // Sempre foto + overlay warm escuro (foto vem do pipeline existente)
+    const bg = photo
+      ? `linear-gradient(to bottom, rgba(26,14,8,0.35) 0%, rgba(26,14,8,0.72) 60%, rgba(26,14,8,0.92) 100%), url(${photo}) center/cover no-repeat`
+      : `linear-gradient(145deg, ${pal.dark} 0%, #2b1810 100%)`
+
+    const titleSz = isCover ? sz(width < 400 ? 30 : 40) : sz(width < 400 ? 22 : 28)
+    const subSz = sz(width < 400 ? 12 : 14)
+
+    // Split headline into main + highlight (último segmento após "?" ou "...")
+    // Convenção simples: a última frase é o destaque
+    const headline = slide.headline || ''
+    const splitMatch = headline.match(/^(.*?[.!?…]+\s+)(.+)$/)
+    const headMain = splitMatch ? splitMatch[1].trim() : headline
+    const headHighlight = splitMatch ? splitMatch[2].trim() : ''
+
+    // Heart SVG ornament em gold (accentSoft pêssego)
+    const HeartOrnament = ({ size = 22 }: { size?: number }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ display: 'inline-block' }}>
+        <path d="M12 20.5 C 6 16, 3 13, 3 9 C 3 6, 5 4, 8 4 C 10 4, 11.5 5.5, 12 7 C 12.5 5.5, 14 4, 16 4 C 19 4, 21 6, 21 9 C 21 13, 18 16, 12 20.5 Z"
+          stroke="#d4a574" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )
+
+    // Divider ornamental: linha - heart - linha
+    const Divider = () => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, marginBottom: 14, width: '60%' }}>
+        <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #d4a574, transparent)' }} />
+        <HeartOrnament size={14} />
+        <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #d4a574, transparent)' }} />
+      </div>
+    )
+
+    return (
+      <div ref={ref} style={{
+        width, height, background: bg,
+        padding: PAD, display: 'flex', flexDirection: 'column',
+        justifyContent: isCover ? 'flex-end' : 'space-between',
+        boxSizing: 'border-box', overflow: 'hidden', position: 'relative',
+        fontFamily: pack.bodyFont,
+      }}>
+        {/* Top heart ornament (todas as variants menos CTA) */}
+        {!isCta && (
+          <div style={{ position: 'absolute', top: PAD * 0.7, left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+            <HeartOrnament size={isCover ? 26 : 20} />
+          </div>
+        )}
+
+        {/* ─── COVER ─── */}
+        {isCover && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <h1 style={{
+              fontSize: titleSz, fontWeight: 400, color: pal.textLight,
+              lineHeight: 1.1, margin: 0, fontFamily: pack.titleFont,
+            }}>
+              {headMain}
+              {headHighlight && (
+                <>
+                  <br />
+                  <span style={{
+                    background: `linear-gradient(180deg, transparent 50%, ${pal.accentSoft}cc 50%, ${pal.accentSoft}cc 90%, transparent 90%)`,
+                    color: pal.accent, padding: '0 12px', display: 'inline-block', marginTop: 6,
+                    fontStyle: 'italic',
+                  }}>
+                    {headHighlight}
+                  </span>
+                </>
+              )}
+            </h1>
+            <Divider />
+            {slide.subtitle && (
+              <p style={{
+                fontSize: subSz, color: pal.textMuted, lineHeight: 1.7,
+                margin: 0, fontFamily: pack.bodyFont, maxWidth: '85%',
+              }}>
+                {slide.subtitle}
+              </p>
+            )}
+            {pack.hasSwipeButton && (
+              <div style={{ marginTop: 24, color: '#d4a574', fontSize: sz(20), fontWeight: 300 }}>→</div>
+            )}
+          </div>
+        )}
+
+        {/* ─── CONTENT TEXT ─── */}
+        {isText && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', paddingTop: PAD * 0.4 }}>
+            <h2 style={{
+              fontSize: titleSz, fontWeight: 400, color: pal.textLight,
+              lineHeight: 1.2, margin: 0, fontFamily: pack.titleFont,
+            }}>
+              {headMain}
+              {headHighlight && (
+                <>
+                  <br />
+                  <span style={{
+                    background: `linear-gradient(180deg, transparent 55%, ${pal.accentSoft}cc 55%, ${pal.accentSoft}cc 90%, transparent 90%)`,
+                    color: pal.accent, padding: '0 10px', display: 'inline-block', marginTop: 4,
+                    fontStyle: 'italic',
+                  }}>
+                    {headHighlight}
+                  </span>
+                </>
+              )}
+            </h2>
+            <Divider />
+            {slide.subtitle && (
+              <p style={{
+                fontSize: subSz, color: pal.textLight, lineHeight: 1.8,
+                margin: 0, fontFamily: pack.bodyFont, maxWidth: '88%',
+                whiteSpace: 'pre-line',
+              }}>
+                {slide.subtitle}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ─── CONTENT LIST (checklist) ─── */}
+        {isList && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: PAD * 0.6 }}>
+            <h2 style={{
+              fontSize: titleSz, fontWeight: 400, color: pal.textLight,
+              lineHeight: 1.15, margin: 0, fontFamily: pack.titleFont, textAlign: 'center',
+            }}>
+              {headMain}
+              {headHighlight && (
+                <>
+                  <br />
+                  <span style={{
+                    fontFamily: pack.handwritingFont || pack.titleFont,
+                    color: pal.accent, fontSize: sz(width < 400 ? 32 : 42), fontStyle: 'italic',
+                  }}>
+                    {headHighlight}
+                  </span>
+                </>
+              )}
+            </h2>
+            <div style={{ height: 18 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingLeft: PAD * 0.3, paddingRight: PAD * 0.3 }}>
+              {parseItems(slide.subtitle).slice(0, 4).map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* Círculo dourado com heart pequeno */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: `radial-gradient(circle at 30% 30%, ${pal.accentSoft}, #d4a574)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 20.5 C 6 16, 3 13, 3 9 C 3 6, 5 4, 8 4 C 10 4, 11.5 5.5, 12 7 C 12.5 5.5, 14 4, 16 4 C 19 4, 21 6, 21 9 C 21 13, 18 16, 12 20.5 Z"
+                        fill={pal.accent} />
+                    </svg>
+                  </div>
+                  <span style={{
+                    fontSize: subSz, color: pal.textLight, lineHeight: 1.4,
+                    fontFamily: pack.bodyFont,
+                  }}>
+                    {item}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── CTA ─── */}
+        {isCta && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+            <HeartOrnament size={28} />
+            <div style={{ height: 12 }} />
+            <h2 style={{
+              fontSize: titleSz, fontWeight: 400, color: pal.textLight,
+              lineHeight: 1.2, margin: 0, fontFamily: pack.titleFont,
+            }}>
+              {headMain}
+              {headHighlight && (
+                <>
+                  <br />
+                  <span style={{
+                    color: pal.accent, fontStyle: 'italic',
+                  }}>
+                    {headHighlight}
+                  </span>
+                </>
+              )}
+            </h2>
+            <Divider />
+            {slide.subtitle && (
+              <p style={{
+                fontSize: subSz, color: pal.textMuted, lineHeight: 1.7,
+                margin: 0, fontFamily: pack.bodyFont, maxWidth: '85%',
+              }}>
+                {slide.subtitle}
+              </p>
+            )}
+            <div style={{ flex: 1 }} />
+            {/* Footer brushstroke vinho com lock + CTA */}
+            <div style={{
+              position: 'absolute', bottom: PAD * 0.6, left: PAD * 0.3, right: PAD * 0.3,
+              background: `linear-gradient(95deg, transparent 0%, ${pal.accent} 8%, ${pal.accent} 92%, transparent 100%)`,
+              padding: '14px 20px', borderRadius: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect x="5" y="11" width="14" height="9" rx="1.5" stroke="#d4a574" strokeWidth="1.5" fill="none" />
+                <path d="M8 11 V 8 C 8 5.8, 9.8 4, 12 4 S 16 5.8, 16 8 V 11" stroke="#d4a574" strokeWidth="1.5" fill="none" />
+              </svg>
+              <span style={{
+                color: pal.textLight, fontSize: sz(13), fontFamily: pack.titleFont,
+                fontStyle: 'italic', fontWeight: 600,
+              }}>
+                {slide.ctaType || 'Me chama no Direct'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Brand watermark bottom-left (não no CTA) */}
+        {pack.hasWatermark && !isCta && (
+          <span style={{
+            position: 'absolute', bottom: PAD * 0.5, left: PAD,
+            fontSize: sz(8), color: 'rgba(212,165,116,0.55)',
+            letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: pack.titleFont,
+          }}>
+            {brand || '@kelly.tondo'}
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  // ══════════════════════════════════════════
   // FALLBACK
   // ══════════════════════════════════════════
   return (

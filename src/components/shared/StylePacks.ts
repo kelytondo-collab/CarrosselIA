@@ -7,6 +7,49 @@ import type { ColorPalette } from '../../types'
 
 export const STYLE_PACKS: Record<Exclude<StylePackId, 'livre'>, StylePackConfig> = {
 
+  // ── 4. ELEGANTE ──
+  // Champagne + vinho + dourado, serif Playfair, ornamentos delicados
+  'elegante': {
+    id: 'elegante',
+    name: 'Elegante',
+    description: 'Foto warm + serif Playfair + vinho/dourado + ornamentos delicados (heart, brushstroke)',
+    titleFont: '"Playfair Display", serif',
+    bodyFont: '"Lora", serif',
+    handwritingFont: '"Caveat", cursive',
+    palette: {
+      dark: '#1a0e08',       // warm dark brown (overlay sobre foto)
+      light: '#fdf4e8',      // champagne cream
+      accent: '#7b1d3a',     // vinho/burgundy
+      accentSoft: '#f4d4ad', // pêssego claro (brushstroke highlight)
+      textDark: '#2b1810',   // texto escuro warm
+      textLight: '#fdf4e8',  // texto claro champagne
+      textMuted: 'rgba(253,244,232,0.65)',
+    },
+    sequence6: [
+      { variant: 'elegante-cover-photo', role: 'cover' },
+      { variant: 'elegante-content-text', role: 'content' },
+      { variant: 'elegante-content-text', role: 'content' },
+      { variant: 'elegante-content-list', role: 'content' },
+      { variant: 'elegante-content-text', role: 'checklist' },
+      { variant: 'elegante-cta', role: 'cta' },
+    ],
+    sequence8: [
+      { variant: 'elegante-cover-photo', role: 'cover' },
+      { variant: 'elegante-content-text', role: 'content' },
+      { variant: 'elegante-content-text', role: 'content' },
+      { variant: 'elegante-content-list', role: 'content' },
+      { variant: 'elegante-content-text', role: 'content' },
+      { variant: 'elegante-content-text', role: 'content' },
+      { variant: 'elegante-content-list', role: 'checklist' },
+      { variant: 'elegante-cta', role: 'cta' },
+    ],
+    usesPhotosInContent: true,
+    hasAvatar: false,
+    hasSwipeButton: true,
+    hasSlideCounter: false,
+    hasWatermark: true,
+  },
+
   // ── 1. PRESENCA DOURADA ──
   // Foto fundo + dourado + alternancia dark/light cream
   'presenca-dourada': {
@@ -163,6 +206,19 @@ export function getStylePackWithUserPalette(id: StylePackId, userPalette?: Color
         textDark: userPalette.secondary || userPalette.background || pack.palette.textDark,
         textLight: userPalette.text || pack.palette.textLight,
         textMuted: (userPalette.text || pack.palette.textMuted) + '99',
+      },
+    }
+  }
+
+  // Elegante: preserva paleta do pack (champagne/vinho/dourado é a identidade)
+  // Só o accent (vinho) responde à cor do usuário se houver
+  if (id === 'elegante') {
+    return {
+      ...pack,
+      palette: {
+        ...pack.palette,
+        accent: userAccent,
+        // mantém accentSoft pêssego — é base do visual
       },
     }
   }

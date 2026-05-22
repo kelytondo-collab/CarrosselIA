@@ -1,7 +1,7 @@
 // ── AUTOR.IA Style Packs ──
 // 3 estilos visuais que o especialista escolhe no perfil como padrao
 
-export type StylePackId = 'livre' | 'presenca-dourada' | 'diario-artesanal' | 'impacto-editorial'
+export type StylePackId = 'livre' | 'presenca-dourada' | 'diario-artesanal' | 'impacto-editorial' | 'elegante'
 
 export type SlideVariant =
   // Presenca Dourada
@@ -10,6 +10,8 @@ export type SlideVariant =
   | 'craft-cover' | 'craft-kraft' | 'craft-paper' | 'craft-cta'
   // Impacto Editorial
   | 'edit-cover' | 'edit-black' | 'edit-accent' | 'edit-white' | 'edit-photo' | 'edit-cta'
+  // Elegante (champagne + vinho + dourado, serif Playfair)
+  | 'elegante-cover-photo' | 'elegante-content-text' | 'elegante-content-list' | 'elegante-cta'
 
 export interface StyleSlideConfig {
   variant: SlideVariant
