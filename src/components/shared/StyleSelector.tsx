@@ -12,6 +12,7 @@ const OPTIONS: { id: StylePackId; label: string; colors: [string, string, string
   { id: 'presenca-dourada', label: 'Presença Dourada', colors: ['#d4a574', '#1a1008', '#faf5ee'] },
   { id: 'diario-artesanal', label: 'Diário Artesanal', colors: ['#d97706', '#e8d5b7', '#faf6f0'] },
   { id: 'impacto-editorial', label: 'Impacto Editorial', colors: ['#ef4444', '#111111', '#fafafa'] },
+  { id: 'elegante', label: 'Elegante', colors: ['#7b1d3a', '#1a0e08', '#f4d4ad'] },
 ]
 
 export default function StyleSelector({ selected, onChange }: Props) {

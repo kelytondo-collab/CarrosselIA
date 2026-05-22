@@ -449,7 +449,7 @@ export default function Onboarding({ onComplete, apiKey, existingProfile }: Prop
                 <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">Estilo AUTOR.IA</label>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Escolha o estilo dos seus carrosseis. Voce configura UMA VEZ e todos saem prontos.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {(['presenca-dourada', 'diario-artesanal', 'impacto-editorial'] as const).map(packId => {
+                  {(['presenca-dourada', 'diario-artesanal', 'impacto-editorial', 'elegante'] as const).map(packId => {
                     const pack = STYLE_PACKS[packId]
                     if (!pack) return null
                     const isActive = stylePackId === packId
