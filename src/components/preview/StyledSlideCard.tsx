@@ -545,32 +545,38 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
       </svg>
     )
 
-    const Divider = () => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 12, width: '70%', alignSelf: 'center' }}>
-        <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #d4a574, transparent)' }} />
-        <HeartOrnament size={12} />
-        <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #d4a574, transparent)' }} />
-      </div>
-    )
-
+    // Foto: gradient sutil só na borda interna pra blend leve com painel champagne
     const photoBg = hasPhoto
       ? `${photoOnLeft
-          ? `linear-gradient(to right, rgba(26,14,8,0.0) 75%, rgba(26,14,8,0.55) 100%)`
-          : `linear-gradient(to left, rgba(26,14,8,0.0) 75%, rgba(26,14,8,0.55) 100%)`
+          ? `linear-gradient(to right, rgba(253,244,232,0.0) 80%, rgba(253,244,232,0.25) 100%)`
+          : `linear-gradient(to left, rgba(253,244,232,0.0) 80%, rgba(253,244,232,0.25) 100%)`
         }, url(${photo}) center/cover no-repeat`
-      : `linear-gradient(145deg, #2b1810 0%, ${pal.dark} 50%, #1a0e08 100%)`
+      : `linear-gradient(145deg, #f5e6d0 0%, ${pal.light} 50%, #f0dcc0 100%)`
 
     const panelPad = Math.round(width * 0.045)
 
-    // Highlight com fundo SÓLIDO pêssego (sem alpha) + texto vinho — máximo contraste
+    // Cores light theme — painel champagne com texto escuro warm
+    const titleColor = pal.textDark      // #2b1810 dark warm
+    const bodyColor = '#3d2515'          // body um pouco mais claro que título
+    const mutedColor = '#7a5a3a'         // muted warm brown
+    const goldColor = '#b8893f'          // dourado mais escuro pra contraste no champagne
+
+    const Divider2 = () => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 12, width: '70%', alignSelf: 'center' }}>
+        <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${goldColor}, transparent)` }} />
+        <HeartOrnament size={12} color={goldColor} />
+        <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${goldColor}, transparent)` }} />
+      </div>
+    )
+
+    // Highlight: texto vinho + brushstroke pêssego SÓLIDO embaixo (estilo Image 1)
     const HighlightSpan = ({ children }: { children: React.ReactNode }) => (
       <span style={{
-        background: pal.accentSoft,
+        background: `linear-gradient(180deg, transparent 60%, #e8b886 60%, #e8b886 92%, transparent 92%)`,
         color: pal.accent,
-        padding: '2px 10px',
+        padding: '0 6px',
         display: 'inline-block',
         marginTop: 4,
-        borderRadius: 2,
         fontStyle: isList ? 'italic' : 'normal',
         fontFamily: isList ? (pack.handwritingFont || pack.titleFont) : pack.titleFont,
         fontSize: isList ? sz(width < 400 ? 26 : 34) : undefined,
@@ -580,37 +586,37 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
       </span>
     )
 
-    // Painel texto — usado tanto pra split quanto fullwidth (quando sem foto)
+    // Painel texto champagne — usado tanto pra split quanto fullwidth (quando sem foto)
     const TextPanel = ({ widthPct }: { widthPct: string }) => (
       <div style={{
         width: widthPct, height: '100%',
         background: hasPhoto
-          ? `linear-gradient(${photoOnLeft ? '90deg' : '270deg'}, rgba(26,14,8,0.92) 0%, #1a0e08 25%, #2b1810 100%)`
-          : `radial-gradient(ellipse at center, #2b1810 0%, ${pal.dark} 80%)`,
+          ? `linear-gradient(${photoOnLeft ? '90deg' : '270deg'}, ${pal.light} 0%, #faedd6 40%, #f5e6d0 100%)`
+          : `radial-gradient(ellipse at center, ${pal.light} 0%, #f5e6d0 80%)`,
         padding: panelPad,
         display: 'flex', flexDirection: 'column',
         boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
       }}>
         {/* Heart topo */}
         <div style={{ textAlign: 'center', marginBottom: 6 }}>
-          <HeartOrnament size={isCover || isCta ? 22 : 18} />
+          <HeartOrnament size={isCover || isCta ? 22 : 18} color={goldColor} />
         </div>
 
-        {/* Conteúdo central (cresce pra preencher) */}
+        {/* Conteúdo central */}
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           justifyContent: 'center', width: '100%', textAlign: 'center',
           minHeight: 0,
         }}>
           <h2 style={{
-            fontSize: titleSz, fontWeight: 400, color: pal.textLight,
+            fontSize: titleSz, fontWeight: 400, color: titleColor,
             lineHeight: 1.18, margin: 0, fontFamily: pack.titleFont,
           }}>
             {headMain}
             {headHighlight && <><br /><HighlightSpan>{headHighlight}</HighlightSpan></>}
           </h2>
 
-          <Divider />
+          <Divider2 />
 
           {isList ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4, textAlign: 'left' }}>
@@ -618,14 +624,14 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 30, height: 30, borderRadius: '50%',
-                    background: `radial-gradient(circle at 30% 30%, ${pal.accentSoft}, #d4a574)`,
+                    background: `radial-gradient(circle at 30% 30%, #faedd6, ${goldColor})`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                    flexShrink: 0, boxShadow: '0 2px 5px rgba(123,29,58,0.2)',
                   }}>
                     <HeartOrnament size={13} color={pal.accent} />
                   </div>
                   <span style={{
-                    fontSize: subSz, color: pal.textLight, lineHeight: 1.35,
+                    fontSize: subSz, color: bodyColor, lineHeight: 1.35,
                     fontFamily: pack.bodyFont,
                   }}>{item}</span>
                 </div>
@@ -633,21 +639,20 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
             </div>
           ) : slide.subtitle ? (
             <p style={{
-              fontSize: subSz, color: pal.textLight, lineHeight: 1.75,
+              fontSize: subSz, color: bodyColor, lineHeight: 1.75,
               margin: 0, fontFamily: pack.bodyFont,
-              whiteSpace: 'pre-line', opacity: 0.92,
+              whiteSpace: 'pre-line',
             }}>
               {slide.subtitle}
             </p>
           ) : null}
 
-          {/* Cover scroll arrow */}
           {isCover && pack.hasSwipeButton && (
-            <div style={{ color: '#d4a574', fontSize: sz(18), fontWeight: 300, marginTop: 10 }}>→</div>
+            <div style={{ color: goldColor, fontSize: sz(18), fontWeight: 300, marginTop: 10 }}>→</div>
           )}
         </div>
 
-        {/* CTA brushstroke footer — fora do conteúdo flexível, sempre no rodapé */}
+        {/* CTA brushstroke vinho no rodapé */}
         {isCta && (
           <div style={{
             width: '100%',
@@ -657,8 +662,8 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
             marginTop: 8, flexShrink: 0,
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <rect x="5" y="11" width="14" height="9" rx="1.5" stroke="#d4a574" strokeWidth="1.5" fill="none" />
-              <path d="M8 11 V 8 C 8 5.8, 9.8 4, 12 4 S 16 5.8, 16 8 V 11" stroke="#d4a574" strokeWidth="1.5" fill="none" />
+              <rect x="5" y="11" width="14" height="9" rx="1.5" stroke="#fdf4e8" strokeWidth="1.5" fill="none" />
+              <path d="M8 11 V 8 C 8 5.8, 9.8 4, 12 4 S 16 5.8, 16 8 V 11" stroke="#fdf4e8" strokeWidth="1.5" fill="none" />
             </svg>
             <span style={{
               color: pal.textLight, fontSize: sz(12), fontFamily: pack.titleFont,
@@ -669,12 +674,12 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
           </div>
         )}
 
-        {/* Watermark — só se não for CTA */}
+        {/* Watermark */}
         {pack.hasWatermark && !isCta && (
           <span style={{
-            fontSize: sz(7.5), color: 'rgba(212,165,116,0.5)',
+            fontSize: sz(7.5), color: mutedColor,
             letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: pack.titleFont,
-            textAlign: 'center', marginTop: 6, flexShrink: 0,
+            textAlign: 'center', marginTop: 6, flexShrink: 0, opacity: 0.7,
           }}>
             {brand || '@kelly.tondo'}
           </span>
@@ -684,7 +689,7 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
 
     const PhotoColumn = () => (
       <div style={{
-        width: '38%', height: '100%',
+        width: '42%', height: '100%',
         background: photoBg,
         flexShrink: 0,
       }} />
@@ -698,12 +703,12 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
         fontFamily: pack.bodyFont,
       }}>
         {!hasPhoto ? (
-          /* Sem foto: painel ocupa tudo, fundo radial warm */
+          /* Sem foto: painel ocupa tudo, fundo radial champagne */
           <TextPanel widthPct="100%" />
         ) : photoOnLeft ? (
-          <><PhotoColumn /><TextPanel widthPct="62%" /></>
+          <><PhotoColumn /><TextPanel widthPct="58%" /></>
         ) : (
-          <><TextPanel widthPct="62%" /><PhotoColumn /></>
+          <><TextPanel widthPct="58%" /><PhotoColumn /></>
         )}
       </div>
     )
