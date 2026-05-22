@@ -520,19 +520,19 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
     const isCover = variant === 'elegante-cover-photo'
     const isList = variant === 'elegante-content-list'
     const isCta = variant === 'elegante-cta'
-    // isText: 'elegante-content-text' (default behavior, no flag needed)
 
     const photo = slide.imageUrl || expertPhoto
+    const hasPhoto = !!photo
 
-    // Alterna lado da foto baseado no índice — slide ímpar foto esquerda, par direita
+    // Alterna lado da foto pelo índice — variedade visual
     const photoLeft = index % 2 === 0
-    // Cover sempre foto na esquerda (composição mais clássica)
     const photoOnLeft = isCover ? true : photoLeft
 
-    const titleSz = isCover ? sz(width < 400 ? 22 : 30) : sz(width < 400 ? 18 : 24)
+    // Fontes — coluna texto agora é 62%, dá pra ser maior
+    const titleSz = isCover ? sz(width < 400 ? 24 : 32) : sz(width < 400 ? 19 : 25)
     const subSz = sz(width < 400 ? 11 : 13)
 
-    // Split headline (último segmento após .!?… vira destaque)
+    // Split headline — último segmento após .!?… vira destaque
     const headline = slide.headline || ''
     const splitMatch = headline.match(/^(.*?[.!?…]+\s+)(.+)$/)
     const headMain = splitMatch ? splitMatch[1].trim() : headline
@@ -545,90 +545,84 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
       </svg>
     )
 
-    const Divider = ({ width: dw = '70%' }: { width?: string | number }) => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 12, width: dw, alignSelf: 'center' }}>
+    const Divider = () => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 12, width: '70%', alignSelf: 'center' }}>
         <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #d4a574, transparent)' }} />
         <HeartOrnament size={12} />
         <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, #d4a574, transparent)' }} />
       </div>
     )
 
-    // Foto: gradient sutil na borda interna pra blend com painel
-    const photoBg = photo
+    const photoBg = hasPhoto
       ? `${photoOnLeft
-          ? `linear-gradient(to right, rgba(26,14,8,0.0) 70%, rgba(26,14,8,0.45) 100%)`
-          : `linear-gradient(to left, rgba(26,14,8,0.0) 70%, rgba(26,14,8,0.45) 100%)`
+          ? `linear-gradient(to right, rgba(26,14,8,0.0) 75%, rgba(26,14,8,0.55) 100%)`
+          : `linear-gradient(to left, rgba(26,14,8,0.0) 75%, rgba(26,14,8,0.55) 100%)`
         }, url(${photo}) center/cover no-repeat`
-      : `linear-gradient(145deg, ${pal.dark} 0%, #2b1810 100%)`
+      : `linear-gradient(145deg, #2b1810 0%, ${pal.dark} 50%, #1a0e08 100%)`
 
-    const panelPad = Math.round(width * 0.06)
+    const panelPad = Math.round(width * 0.045)
 
-    // Headline element reutilizável
-    const HeadlineElement = ({ centerAlign = true }: { centerAlign?: boolean }) => (
-      <h2 style={{
-        fontSize: titleSz, fontWeight: 400, color: pal.textLight,
-        lineHeight: 1.18, margin: 0, fontFamily: pack.titleFont,
-        textAlign: centerAlign ? 'center' : 'left',
+    // Highlight com fundo SÓLIDO pêssego (sem alpha) + texto vinho — máximo contraste
+    const HighlightSpan = ({ children }: { children: React.ReactNode }) => (
+      <span style={{
+        background: pal.accentSoft,
+        color: pal.accent,
+        padding: '2px 10px',
+        display: 'inline-block',
+        marginTop: 4,
+        borderRadius: 2,
+        fontStyle: isList ? 'italic' : 'normal',
+        fontFamily: isList ? (pack.handwritingFont || pack.titleFont) : pack.titleFont,
+        fontSize: isList ? sz(width < 400 ? 26 : 34) : undefined,
+        fontWeight: 600,
       }}>
-        {headMain}
-        {headHighlight && (
-          <>
-            <br />
-            <span style={{
-              background: `linear-gradient(180deg, transparent 50%, ${pal.accentSoft}d0 50%, ${pal.accentSoft}d0 90%, transparent 90%)`,
-              color: pal.accent, padding: '0 8px', display: 'inline-block', marginTop: 4,
-              fontStyle: isList ? 'italic' : 'normal',
-              fontFamily: isList ? (pack.handwritingFont || pack.titleFont) : pack.titleFont,
-              fontSize: isList ? sz(width < 400 ? 26 : 36) : undefined,
-            }}>
-              {headHighlight}
-            </span>
-          </>
-        )}
-      </h2>
+        {children}
+      </span>
     )
 
-    // ─── PHOTO COLUMN ───
-    const PhotoColumn = () => (
+    // Painel texto — usado tanto pra split quanto fullwidth (quando sem foto)
+    const TextPanel = ({ widthPct }: { widthPct: string }) => (
       <div style={{
-        width: '45%', height: '100%',
-        background: photoBg,
-        position: 'relative',
-        flexShrink: 0,
-      }} />
-    )
-
-    // ─── TEXT PANEL ───
-    const TextPanel = () => (
-      <div style={{
-        width: '55%', height: '100%',
-        background: `linear-gradient(${photoOnLeft ? '90deg' : '270deg'}, rgba(26,14,8,0.92) 0%, #1a0e08 25%, #2b1810 100%)`,
+        width: widthPct, height: '100%',
+        background: hasPhoto
+          ? `linear-gradient(${photoOnLeft ? '90deg' : '270deg'}, rgba(26,14,8,0.92) 0%, #1a0e08 25%, #2b1810 100%)`
+          : `radial-gradient(ellipse at center, #2b1810 0%, ${pal.dark} 80%)`,
         padding: panelPad,
         display: 'flex', flexDirection: 'column',
-        justifyContent: isCta ? 'space-between' : 'center',
-        alignItems: 'center', textAlign: 'center',
-        boxSizing: 'border-box', position: 'relative',
+        boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
       }}>
-        {/* Heart top */}
-        <div style={{ marginBottom: 8 }}>
+        {/* Heart topo */}
+        <div style={{ textAlign: 'center', marginBottom: 6 }}>
           <HeartOrnament size={isCover || isCta ? 22 : 18} />
         </div>
 
-        <div style={{ flex: isCta ? undefined : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%' }}>
-          <HeadlineElement centerAlign={true} />
+        {/* Conteúdo central (cresce pra preencher) */}
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', width: '100%', textAlign: 'center',
+          minHeight: 0,
+        }}>
+          <h2 style={{
+            fontSize: titleSz, fontWeight: 400, color: pal.textLight,
+            lineHeight: 1.18, margin: 0, fontFamily: pack.titleFont,
+          }}>
+            {headMain}
+            {headHighlight && <><br /><HighlightSpan>{headHighlight}</HighlightSpan></>}
+          </h2>
+
           <Divider />
 
           {isList ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginTop: 6, textAlign: 'left' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4, textAlign: 'left' }}>
               {parseItems(slide.subtitle).slice(0, 4).map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
-                    width: 32, height: 32, borderRadius: '50%',
+                    width: 30, height: 30, borderRadius: '50%',
                     background: `radial-gradient(circle at 30% 30%, ${pal.accentSoft}, #d4a574)`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
                   }}>
-                    <HeartOrnament size={14} color={pal.accent} />
+                    <HeartOrnament size={13} color={pal.accent} />
                   </div>
                   <span style={{
                     fontSize: subSz, color: pal.textLight, lineHeight: 1.35,
@@ -646,18 +640,23 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
               {slide.subtitle}
             </p>
           ) : null}
+
+          {/* Cover scroll arrow */}
+          {isCover && pack.hasSwipeButton && (
+            <div style={{ color: '#d4a574', fontSize: sz(18), fontWeight: 300, marginTop: 10 }}>→</div>
+          )}
         </div>
 
-        {/* CTA: brushstroke footer com lock */}
+        {/* CTA brushstroke footer — fora do conteúdo flexível, sempre no rodapé */}
         {isCta && (
           <div style={{
             width: '100%',
-            background: `linear-gradient(95deg, transparent 0%, ${pal.accent} 8%, ${pal.accent} 92%, transparent 100%)`,
-            padding: '12px 16px', borderRadius: 3,
+            background: `linear-gradient(95deg, transparent 0%, ${pal.accent} 10%, ${pal.accent} 90%, transparent 100%)`,
+            padding: '11px 14px', borderRadius: 3,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            marginTop: 12,
+            marginTop: 8, flexShrink: 0,
           }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <rect x="5" y="11" width="14" height="9" rx="1.5" stroke="#d4a574" strokeWidth="1.5" fill="none" />
               <path d="M8 11 V 8 C 8 5.8, 9.8 4, 12 4 S 16 5.8, 16 8 V 11" stroke="#d4a574" strokeWidth="1.5" fill="none" />
             </svg>
@@ -670,23 +669,25 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
           </div>
         )}
 
-        {/* Cover swipe arrow no rodapé */}
-        {isCover && pack.hasSwipeButton && (
-          <div style={{ color: '#d4a574', fontSize: sz(18), fontWeight: 300, marginTop: 8 }}>→</div>
-        )}
-
-        {/* Watermark bottom (apenas se não for CTA) */}
+        {/* Watermark — só se não for CTA */}
         {pack.hasWatermark && !isCta && (
           <span style={{
-            position: 'absolute', bottom: panelPad * 0.45, left: 0, right: 0,
             fontSize: sz(7.5), color: 'rgba(212,165,116,0.5)',
             letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: pack.titleFont,
-            textAlign: 'center',
+            textAlign: 'center', marginTop: 6, flexShrink: 0,
           }}>
             {brand || '@kelly.tondo'}
           </span>
         )}
       </div>
+    )
+
+    const PhotoColumn = () => (
+      <div style={{
+        width: '38%', height: '100%',
+        background: photoBg,
+        flexShrink: 0,
+      }} />
     )
 
     return (
@@ -696,7 +697,14 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
         boxSizing: 'border-box', overflow: 'hidden',
         fontFamily: pack.bodyFont,
       }}>
-        {photoOnLeft ? (<><PhotoColumn /><TextPanel /></>) : (<><TextPanel /><PhotoColumn /></>)}
+        {!hasPhoto ? (
+          /* Sem foto: painel ocupa tudo, fundo radial warm */
+          <TextPanel widthPct="100%" />
+        ) : photoOnLeft ? (
+          <><PhotoColumn /><TextPanel widthPct="62%" /></>
+        ) : (
+          <><TextPanel widthPct="62%" /><PhotoColumn /></>
+        )}
       </div>
     )
   }
