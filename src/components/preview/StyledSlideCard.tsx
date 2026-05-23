@@ -514,7 +514,7 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
   }
 
   // ══════════════════════════════════════════
-  // ELEGANTE — foto lateral + painel texto warm dark, serif Playfair
+  // ELEGANTE — foto full bg + texto overlay, sombrinha sutil só atrás do texto
   // ══════════════════════════════════════════
   if (variant.startsWith('elegante-')) {
     const isCover = variant === 'elegante-cover-photo'
@@ -524,115 +524,112 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
     const photo = slide.imageUrl || expertPhoto
     const hasPhoto = !!photo
 
-    // Alterna lado da foto pelo índice — variedade visual
-    const photoLeft = index % 2 === 0
-    const photoOnLeft = isCover ? true : photoLeft
+    // Alterna lado do texto: slide par esquerda, ímpar direita
+    const textOnLeft = index % 2 === 0
 
-    // Fontes — coluna texto agora é 62%, dá pra ser maior
     const titleSz = isCover ? sz(width < 400 ? 24 : 32) : sz(width < 400 ? 19 : 25)
     const subSz = sz(width < 400 ? 11 : 13)
 
-    // Split headline — último segmento após .!?… vira destaque
+    // Headline split — última frase vira highlight box
     const headline = slide.headline || ''
     const splitMatch = headline.match(/^(.*?[.!?…]+\s+)(.+)$/)
     const headMain = splitMatch ? splitMatch[1].trim() : headline
     const headHighlight = splitMatch ? splitMatch[2].trim() : ''
 
-    const HeartOrnament = ({ size = 20, color = '#d4a574' }: { size?: number; color?: string }) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ display: 'inline-block' }}>
-        <path d="M12 20.5 C 6 16, 3 13, 3 9 C 3 6, 5 4, 8 4 C 10 4, 11.5 5.5, 12 7 C 12.5 5.5, 14 4, 16 4 C 19 4, 21 6, 21 9 C 21 13, 18 16, 12 20.5 Z"
-          stroke={color} strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    )
-
-    // Foto: gradient sutil só na borda interna pra blend leve com painel champagne
-    const photoBg = hasPhoto
-      ? `${photoOnLeft
-          ? `linear-gradient(to right, rgba(253,244,232,0.0) 80%, rgba(253,244,232,0.25) 100%)`
-          : `linear-gradient(to left, rgba(253,244,232,0.0) 80%, rgba(253,244,232,0.25) 100%)`
+    // Foto FULL background. Quando não tem, fundo dark warm.
+    // Gradient SUTIL só atrás do texto pra legibilidade (não escurece a foto inteira)
+    const slideBg = hasPhoto
+      ? `${textOnLeft
+          // Texto na esquerda: gradient escuro da esquerda → transparente
+          ? 'linear-gradient(to right, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 35%, rgba(20,12,8,0.15) 60%, rgba(20,12,8,0) 75%)'
+          // Texto na direita: gradient escuro da direita → transparente
+          : 'linear-gradient(to left, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 35%, rgba(20,12,8,0.15) 60%, rgba(20,12,8,0) 75%)'
         }, url(${photo}) center/cover no-repeat`
-      : `linear-gradient(145deg, #f5e6d0 0%, ${pal.light} 50%, #f0dcc0 100%)`
+      : `radial-gradient(ellipse at ${textOnLeft ? 'left' : 'right'} center, #2b1810 0%, ${pal.dark} 75%, #0a0503 100%)`
 
-    const panelPad = Math.round(width * 0.045)
+    const padX = Math.round(width * 0.07)
+    const padY = Math.round(height * 0.08)
 
-    // Cores light theme — painel champagne com texto escuro warm
-    const titleColor = pal.textDark      // #2b1810 dark warm
-    const bodyColor = '#3d2515'          // body um pouco mais claro que título
-    const mutedColor = '#7a5a3a'         // muted warm brown
-    const goldColor = '#b8893f'          // dourado mais escuro pra contraste no champagne
+    // Cores: texto claro sobre foto/dark
+    const titleColor = pal.textLight     // #fdf4e8 champagne
+    const bodyColor = pal.textLight
+    const goldColor = '#d4a574'          // gold claro pra contraste no dark
+    const peachAccent = '#e8b886'        // pêssego sólido pra highlight box
 
-    const Divider2 = () => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 12, width: '70%', alignSelf: 'center' }}>
-        <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${goldColor}, transparent)` }} />
-        <HeartOrnament size={12} color={goldColor} />
-        <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, transparent, ${goldColor}, transparent)` }} />
-      </div>
-    )
-
-    // Highlight: texto vinho + brushstroke pêssego SÓLIDO embaixo (estilo Image 1)
-    const HighlightSpan = ({ children }: { children: React.ReactNode }) => (
+    // Highlight box: retângulo pêssego sólido com texto VINHO italic dentro (estilo Image 14)
+    const HighlightBox = ({ children }: { children: React.ReactNode }) => (
       <span style={{
-        background: `linear-gradient(180deg, transparent 60%, #e8b886 60%, #e8b886 92%, transparent 92%)`,
+        background: peachAccent,
         color: pal.accent,
-        padding: '0 6px',
+        padding: '3px 12px',
         display: 'inline-block',
-        marginTop: 4,
-        fontStyle: isList ? 'italic' : 'normal',
-        fontFamily: isList ? (pack.handwritingFont || pack.titleFont) : pack.titleFont,
-        fontSize: isList ? sz(width < 400 ? 26 : 34) : undefined,
-        fontWeight: 600,
+        marginTop: 6,
+        fontStyle: 'italic',
+        fontFamily: pack.titleFont,
+        fontWeight: 500,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       }}>
         {children}
       </span>
     )
 
-    // Painel texto champagne — usado tanto pra split quanto fullwidth (quando sem foto)
-    const TextPanel = ({ widthPct }: { widthPct: string }) => (
+    // Linha gold curta horizontal (não mais heart+linha — apenas linha enxuta)
+    const ShortLine = () => (
       <div style={{
-        width: widthPct, height: '100%',
-        background: hasPhoto
-          ? `linear-gradient(${photoOnLeft ? '90deg' : '270deg'}, ${pal.light} 0%, #faedd6 40%, #f5e6d0 100%)`
-          : `radial-gradient(ellipse at center, ${pal.light} 0%, #f5e6d0 80%)`,
-        padding: panelPad,
-        display: 'flex', flexDirection: 'column',
-        boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Heart topo */}
-        <div style={{ textAlign: 'center', marginBottom: 6 }}>
-          <HeartOrnament size={isCover || isCta ? 22 : 18} color={goldColor} />
-        </div>
+        width: 60, height: 2,
+        background: goldColor,
+        marginTop: 14, marginBottom: 14,
+      }} />
+    )
 
-        {/* Conteúdo central */}
+    // Largura máxima da coluna de texto (~50% do slide, deixa espaço pra foto respirar)
+    const textColW = Math.round(width * 0.50)
+
+    return (
+      <div ref={ref} style={{
+        width, height,
+        background: slideBg,
+        position: 'relative', overflow: 'hidden',
+        fontFamily: pack.bodyFont,
+        boxSizing: 'border-box',
+      }}>
+        {/* Container do texto — absolutamente posicionado num lado */}
         <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', width: '100%', textAlign: 'center',
-          minHeight: 0,
+          position: 'absolute',
+          top: padY, bottom: padY,
+          [textOnLeft ? 'left' : 'right']: padX,
+          width: textColW,
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'center',
+          textAlign: 'left',
         }}>
+          {/* Headline */}
           <h2 style={{
             fontSize: titleSz, fontWeight: 400, color: titleColor,
             lineHeight: 1.18, margin: 0, fontFamily: pack.titleFont,
+            textShadow: hasPhoto ? '0 2px 12px rgba(0,0,0,0.45)' : undefined,
           }}>
             {headMain}
-            {headHighlight && <><br /><HighlightSpan>{headHighlight}</HighlightSpan></>}
+            {headHighlight && <><br /><HighlightBox>{headHighlight}</HighlightBox></>}
           </h2>
 
-          <Divider2 />
+          <ShortLine />
 
+          {/* Body / Lista */}
           {isList ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4, textAlign: 'left' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
               {parseItems(slide.subtitle).slice(0, 4).map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
-                    width: 30, height: 30, borderRadius: '50%',
-                    background: `radial-gradient(circle at 30% 30%, #faedd6, ${goldColor})`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, boxShadow: '0 2px 5px rgba(123,29,58,0.2)',
-                  }}>
-                    <HeartOrnament size={13} color={pal.accent} />
-                  </div>
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: `radial-gradient(circle at 30% 30%, ${peachAccent}, ${goldColor})`,
+                    flexShrink: 0,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+                  }} />
                   <span style={{
-                    fontSize: subSz, color: bodyColor, lineHeight: 1.35,
+                    fontSize: subSz, color: bodyColor, lineHeight: 1.4,
                     fontFamily: pack.bodyFont,
+                    textShadow: hasPhoto ? '0 1px 6px rgba(0,0,0,0.4)' : undefined,
                   }}>{item}</span>
                 </div>
               ))}
@@ -642,31 +639,39 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
               fontSize: subSz, color: bodyColor, lineHeight: 1.75,
               margin: 0, fontFamily: pack.bodyFont,
               whiteSpace: 'pre-line',
+              textShadow: hasPhoto ? '0 1px 8px rgba(0,0,0,0.5)' : undefined,
             }}>
               {slide.subtitle}
             </p>
           ) : null}
 
+          {/* Cover scroll arrow */}
           {isCover && pack.hasSwipeButton && (
-            <div style={{ color: goldColor, fontSize: sz(18), fontWeight: 300, marginTop: 10 }}>→</div>
+            <div style={{
+              color: goldColor, fontSize: sz(20), fontWeight: 300, marginTop: 16,
+              textShadow: hasPhoto ? '0 1px 6px rgba(0,0,0,0.5)' : undefined,
+            }}>→</div>
           )}
         </div>
 
-        {/* CTA brushstroke vinho no rodapé */}
+        {/* CTA brushstroke vinho — faixa horizontal no rodapé, full width */}
         {isCta && (
           <div style={{
-            width: '100%',
+            position: 'absolute',
+            bottom: padY * 0.7,
+            left: padX,
+            right: padX,
             background: `linear-gradient(95deg, transparent 0%, ${pal.accent} 10%, ${pal.accent} 90%, transparent 100%)`,
-            padding: '11px 14px', borderRadius: 3,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            marginTop: 8, flexShrink: 0,
+            padding: '12px 18px', borderRadius: 3,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
           }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <rect x="5" y="11" width="14" height="9" rx="1.5" stroke="#fdf4e8" strokeWidth="1.5" fill="none" />
               <path d="M8 11 V 8 C 8 5.8, 9.8 4, 12 4 S 16 5.8, 16 8 V 11" stroke="#fdf4e8" strokeWidth="1.5" fill="none" />
             </svg>
             <span style={{
-              color: pal.textLight, fontSize: sz(12), fontFamily: pack.titleFont,
+              color: pal.textLight, fontSize: sz(13), fontFamily: pack.titleFont,
               fontStyle: 'italic', fontWeight: 600,
             }}>
               {slide.ctaType || 'Me chama no Direct'}
@@ -674,41 +679,18 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
           </div>
         )}
 
-        {/* Watermark */}
+        {/* Watermark — discreto no canto bottom-left/right (oposto ao texto) */}
         {pack.hasWatermark && !isCta && (
           <span style={{
-            fontSize: sz(7.5), color: mutedColor,
+            position: 'absolute',
+            bottom: padY * 0.45,
+            [textOnLeft ? 'right' : 'left']: padX,
+            fontSize: sz(8), color: 'rgba(212,165,116,0.65)',
             letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: pack.titleFont,
-            textAlign: 'center', marginTop: 6, flexShrink: 0, opacity: 0.7,
+            textShadow: hasPhoto ? '0 1px 4px rgba(0,0,0,0.5)' : undefined,
           }}>
             {brand || '@kelly.tondo'}
           </span>
-        )}
-      </div>
-    )
-
-    const PhotoColumn = () => (
-      <div style={{
-        width: '42%', height: '100%',
-        background: photoBg,
-        flexShrink: 0,
-      }} />
-    )
-
-    return (
-      <div ref={ref} style={{
-        width, height,
-        display: 'flex', flexDirection: 'row',
-        boxSizing: 'border-box', overflow: 'hidden',
-        fontFamily: pack.bodyFont,
-      }}>
-        {!hasPhoto ? (
-          /* Sem foto: painel ocupa tudo, fundo radial champagne */
-          <TextPanel widthPct="100%" />
-        ) : photoOnLeft ? (
-          <><PhotoColumn /><TextPanel widthPct="58%" /></>
-        ) : (
-          <><TextPanel widthPct="58%" /><PhotoColumn /></>
         )}
       </div>
     )
