@@ -91,6 +91,7 @@ export default function StoriesPreview() {
   const [editingSlide, setEditingSlide] = useState<number | null>(null)
   const [publishingStories, setPublishingStories] = useState(false)
   const [publishProgress, setPublishProgress] = useState('')
+  const [template, setTemplate] = useState<'padrao' | 'elegante'>('padrao')
 
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -234,6 +235,157 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
   const bgColor = palette.p.background || palette.p.secondary
   const txtColor = palette.p.text || palette.p.accent
 
+  // ── ELEGANTE card render (foto full bg + texto overlay + serif Playfair + vinho/gold) ──
+  const renderEleganteCard = (slide: StorySlide, i: number) => {
+    const photo = slide.imageUrl || expertPhotoBase64 || undefined
+    const hasPhoto = !!photo
+    const textOnLeft = i % 2 === 0
+
+    // Headline split — última frase vira highlight box
+    const headline = slide.headline || ''
+    const splitMatch = headline.match(/^(.*?[.!?…]+\s+)(.+)$/)
+    const headMain = splitMatch ? splitMatch[1].trim() : headline
+    const headHighlight = splitMatch ? splitMatch[2].trim() : ''
+
+    const slideBg = hasPhoto
+      ? `${textOnLeft
+          ? 'linear-gradient(to right, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 38%, rgba(20,12,8,0.15) 62%, rgba(20,12,8,0) 78%)'
+          : 'linear-gradient(to left, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 38%, rgba(20,12,8,0.15) 62%, rgba(20,12,8,0) 78%)'
+        }, url(${photo}) center/cover no-repeat`
+      : `radial-gradient(ellipse at ${textOnLeft ? 'left' : 'right'} center, #2b1810 0%, #1a0e08 75%, #0a0503 100%)`
+
+    const padX = 16
+    const padY = 55  // respeita safe zone top/bottom do Instagram
+    const titleSz = 18 * fontScale
+    const subSz = 10.5 * fontScale
+    const goldColor = '#d4a574'
+    const vinhoColor = '#7b1d3a'
+    const peachAccent = '#e8b886'
+
+    return (
+      <div
+        ref={el => { slideRefs.current[i] = el }}
+        style={{
+          width: DISP_W, height: DISP_H,
+          background: slideBg,
+          position: 'relative', overflow: 'hidden',
+          borderRadius: 16,
+          fontFamily: '"Lora", serif',
+        }}
+        className="shadow-lg"
+      >
+        {/* Safe zone top */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: 'rgba(0,0,0,0.1)' }} />
+
+        {/* Container do texto */}
+        <div style={{
+          position: 'absolute',
+          top: padY, bottom: padY,
+          [textOnLeft ? 'left' : 'right']: padX,
+          width: DISP_W * 0.55,
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', textAlign: 'left',
+        }}>
+          <h2 style={{
+            fontSize: titleSz, fontWeight: 400, color: '#fdf4e8',
+            lineHeight: 1.18, margin: 0,
+            fontFamily: '"Playfair Display", serif',
+            textShadow: hasPhoto ? '0 2px 10px rgba(0,0,0,0.5)' : undefined,
+          }}>
+            {headMain}
+            {headHighlight && (
+              <>
+                <br />
+                <span style={{
+                  background: peachAccent,
+                  color: vinhoColor,
+                  padding: '2px 8px',
+                  display: 'inline-block',
+                  marginTop: 5,
+                  fontStyle: 'italic',
+                  fontFamily: '"Playfair Display", serif',
+                  fontWeight: 500,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                }}>
+                  {headHighlight}
+                </span>
+              </>
+            )}
+          </h2>
+
+          {/* Linha gold curta */}
+          <div style={{ width: 40, height: 1.5, background: goldColor, marginTop: 10, marginBottom: 10 }} />
+
+          {/* Body */}
+          {slide.body && (
+            <p style={{
+              fontSize: subSz, color: '#fdf4e8', lineHeight: 1.7,
+              margin: 0, fontFamily: '"Lora", serif',
+              whiteSpace: 'pre-line',
+              textShadow: hasPhoto ? '0 1px 6px rgba(0,0,0,0.5)' : undefined,
+            }}>
+              {slide.body}
+            </p>
+          )}
+
+          {/* Question box (estilo Elegante: peach com texto vinho) */}
+          {slide.type === 'question' && slide.questionText && (
+            <div style={{
+              marginTop: 12, padding: '10px 12px',
+              background: peachAccent, borderRadius: 4,
+              boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+            }}>
+              <p style={{ fontSize: 8, color: `${vinhoColor}aa`, margin: '0 0 4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: '"Playfair Display", serif' }}>
+                Sua pergunta
+              </p>
+              <p style={{ fontSize: 11, color: vinhoColor, margin: 0, fontWeight: 600, fontStyle: 'italic', fontFamily: '"Playfair Display", serif' }}>
+                {slide.questionText}
+              </p>
+            </div>
+          )}
+
+          {/* Poll (mesma vibe) */}
+          {slide.type === 'poll' && slide.pollOptions && (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ fontSize: 10, color: '#fdf4e8', margin: '0 0 6px', fontWeight: 500, fontStyle: 'italic', fontFamily: '"Playfair Display", serif' }}>
+                {slide.pollQuestion}
+              </p>
+              {slide.pollOptions.map((opt, oi) => (
+                <div key={oi} style={{
+                  marginBottom: 4, padding: '6px 10px',
+                  background: peachAccent, borderRadius: 3,
+                }}>
+                  <span style={{ fontSize: 10, color: vinhoColor, fontWeight: 500, fontFamily: '"Lora", serif' }}>{opt}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Watermark — canto oposto ao texto */}
+        <span style={{
+          position: 'absolute', bottom: 22,
+          [textOnLeft ? 'right' : 'left']: padX,
+          fontSize: 7.5, color: 'rgba(212,165,116,0.7)',
+          letterSpacing: '0.25em', textTransform: 'uppercase',
+          fontFamily: '"Playfair Display", serif',
+          textShadow: hasPhoto ? '0 1px 4px rgba(0,0,0,0.5)' : undefined,
+        }}>
+          @kelly.tondo
+        </span>
+
+        {/* Safe zone bottom */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 55, background: 'rgba(0,0,0,0.1)' }} />
+
+        {generatingImg.has(i) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70" style={{ borderRadius: 16 }}>
+            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
@@ -261,21 +413,32 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
       <div className="px-6 pt-4 shrink-0">
         <div className="flex flex-wrap gap-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Cor</p>
-            <div className="flex gap-2">
-              {PALETTES.map(p => (
-                <button key={p.id} onClick={() => setPalette(p)} title={p.label} style={{ background: `linear-gradient(135deg, ${p.p.background || p.p.secondary} 50%, ${p.p.primary} 50%)` }} className={cn('w-7 h-7 rounded-full transition-all border', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105', p.p.background === '#ffffff' ? 'border-gray-300' : 'border-transparent')} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Fonte</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1">Estilo</p>
             <div className="flex gap-1">
-              {FONTS.map(f => (
-                <button key={f.id} onClick={() => setFont(f)} className={cn('px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all', font.id === f.id ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>{f.label}</button>
-              ))}
+              <button onClick={() => setTemplate('padrao')} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition-all', template === 'padrao' ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>Padrão</button>
+              <button onClick={() => setTemplate('elegante')} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition-all', template === 'elegante' ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>Elegante</button>
             </div>
           </div>
+          {template === 'padrao' && (
+            <>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Palette size={11} /> Cor</p>
+                <div className="flex gap-2">
+                  {PALETTES.map(p => (
+                    <button key={p.id} onClick={() => setPalette(p)} title={p.label} style={{ background: `linear-gradient(135deg, ${p.p.background || p.p.secondary} 50%, ${p.p.primary} 50%)` }} className={cn('w-7 h-7 rounded-full transition-all border', palette.id === p.id ? 'ring-2 ring-offset-2 ring-violet-500 scale-110' : 'hover:scale-105', p.p.background === '#ffffff' ? 'border-gray-300' : 'border-transparent')} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Fonte</p>
+                <div className="flex gap-1">
+                  {FONTS.map(f => (
+                    <button key={f.id} onClick={() => setFont(f)} className={cn('px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all', font.id === f.id ? 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 text-violet-700' : 'border-gray-200 dark:border-gray-700 text-gray-500')}>{f.label}</button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Type size={11} /> Tamanho</p>
             <div className="flex items-center gap-2">
@@ -299,6 +462,7 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
             return (
               <div key={slide.id} className="flex flex-col gap-2 shrink-0">
                 {/* Card */}
+                {template === 'elegante' ? renderEleganteCard(slide, i) : (
                 <div
                   ref={el => { slideRefs.current[i] = el }}
                   style={{
@@ -361,6 +525,7 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Type badge + edit toggle (outside card - not exported) */}
                 <div className="flex items-center justify-between" style={{ width: DISP_W }}>
