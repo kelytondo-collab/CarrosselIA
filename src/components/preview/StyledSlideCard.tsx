@@ -537,52 +537,68 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
     const headHighlight = splitMatch ? splitMatch[2].trim() : ''
 
     // Foto FULL background. Quando não tem, fundo dark warm.
-    // Gradient SUTIL só atrás do texto pra legibilidade (não escurece a foto inteira)
+    // Gradient SUTIL (reduzido) só atrás do texto — foto fica mais visível
     const slideBg = hasPhoto
       ? `${textOnLeft
-          // Texto na esquerda: gradient escuro da esquerda → transparente
-          ? 'linear-gradient(to right, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 35%, rgba(20,12,8,0.15) 60%, rgba(20,12,8,0) 75%)'
-          // Texto na direita: gradient escuro da direita → transparente
-          : 'linear-gradient(to left, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 35%, rgba(20,12,8,0.15) 60%, rgba(20,12,8,0) 75%)'
+          ? 'linear-gradient(to right, rgba(20,12,8,0.55) 0%, rgba(20,12,8,0.30) 30%, rgba(20,12,8,0.08) 50%, rgba(20,12,8,0) 65%)'
+          : 'linear-gradient(to left, rgba(20,12,8,0.55) 0%, rgba(20,12,8,0.30) 30%, rgba(20,12,8,0.08) 50%, rgba(20,12,8,0) 65%)'
         }, url(${photo}) center/cover no-repeat`
       : `radial-gradient(ellipse at ${textOnLeft ? 'left' : 'right'} center, #2b1810 0%, ${pal.dark} 75%, #0a0503 100%)`
 
     const padX = Math.round(width * 0.07)
     const padY = Math.round(height * 0.08)
 
-    // Cores: texto claro sobre foto/dark
+    // Cores
     const titleColor = pal.textLight     // #fdf4e8 champagne
     const bodyColor = pal.textLight
-    const goldColor = '#d4a574'          // gold claro pra contraste no dark
-    const peachAccent = '#e8b886'        // pêssego sólido pra highlight box
+    const goldColor = '#d4a574'
+    const mauveAccent = '#9c5a6f'        // mauve/rosé pra highlight box (referência)
+    const orangeWarm = '#d4a574'         // laranja warm pra última frase do body
 
-    // Highlight box: retângulo pêssego sólido com texto VINHO italic dentro (estilo Image 14)
+    // Heart ornament SVG (gold outline) — vai no topo
+    const HeartTop = () => (
+      <svg width={28} height={28} viewBox="0 0 24 24" fill="none" style={{ display: 'block', margin: '0 auto 14px' }}>
+        <path d="M12 20.5 C 6 16, 3 13, 3 9 C 3 6, 5 4, 8 4 C 10 4, 11.5 5.5, 12 7 C 12.5 5.5, 14 4, 16 4 C 19 4, 21 6, 21 9 C 21 13, 18 16, 12 20.5 Z"
+          stroke={goldColor} strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter: hasPhoto ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' : undefined }} />
+      </svg>
+    )
+
+    // Highlight box: bg mauve/rosé sólido + texto BRANCO italic (referência)
     const HighlightBox = ({ children }: { children: React.ReactNode }) => (
       <span style={{
-        background: peachAccent,
-        color: pal.accent,
-        padding: '3px 12px',
+        background: mauveAccent,
+        color: '#ffffff',
+        padding: '3px 14px',
         display: 'inline-block',
         marginTop: 6,
         fontStyle: 'italic',
         fontFamily: pack.titleFont,
         fontWeight: 500,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        boxShadow: '0 3px 10px rgba(0,0,0,0.4)',
       }}>
         {children}
       </span>
     )
 
-    // Linha gold curta horizontal (não mais heart+linha — apenas linha enxuta)
+    // Linha gold curta horizontal — brushstroke tapered effect
     const ShortLine = () => (
       <div style={{
-        width: 60, height: 2,
-        background: goldColor,
+        width: 70, height: 2,
+        background: `linear-gradient(to right, transparent, ${goldColor} 30%, ${goldColor} 70%, transparent)`,
         marginTop: 14, marginBottom: 14,
+        alignSelf: 'center',
       }} />
     )
 
-    // Largura máxima da coluna de texto (~50% do slide, deixa espaço pra foto respirar)
+    // Split body — última frase (após \n\n ou último .) vira destaque laranja warm
+    const body = slide.subtitle || ''
+    const bodyParas = body.split(/\n\s*\n/)
+    const lastPara = bodyParas[bodyParas.length - 1] || ''
+    const lastSentenceMatch = lastPara.match(/^(.*?)([^.!?…]+[.!?…]?)\s*$/s)
+    const bodyMain = bodyParas.slice(0, -1).join('\n\n') + (bodyParas.length > 1 ? '\n\n' : '') + (lastSentenceMatch ? lastSentenceMatch[1].trim() : '')
+    const bodyHighlight = lastSentenceMatch && body.length > 80 ? lastSentenceMatch[2].trim() : ''
+
     const textColW = Math.round(width * 0.50)
 
     return (
@@ -593,7 +609,7 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
         fontFamily: pack.bodyFont,
         boxSizing: 'border-box',
       }}>
-        {/* Container do texto — absolutamente posicionado num lado */}
+        {/* Container do texto — CENTRALIZADO num lado */}
         <div style={{
           position: 'absolute',
           top: padY, bottom: padY,
@@ -601,13 +617,16 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
           width: textColW,
           display: 'flex', flexDirection: 'column',
           justifyContent: 'center',
-          textAlign: 'left',
+          textAlign: 'center',
         }}>
+          {/* Heart ornament no topo (cover e content) */}
+          {!isCta && <HeartTop />}
+
           {/* Headline */}
           <h2 style={{
             fontSize: titleSz, fontWeight: 400, color: titleColor,
             lineHeight: 1.18, margin: 0, fontFamily: pack.titleFont,
-            textShadow: hasPhoto ? '0 2px 12px rgba(0,0,0,0.45)' : undefined,
+            textShadow: hasPhoto ? '0 2px 14px rgba(0,0,0,0.6)' : undefined,
           }}>
             {headMain}
             {headHighlight && <><br /><HighlightBox>{headHighlight}</HighlightBox></>}
@@ -617,19 +636,19 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
 
           {/* Body / Lista */}
           {isList ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4, textAlign: 'left' }}>
               {parseItems(slide.subtitle).slice(0, 4).map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%',
-                    background: `radial-gradient(circle at 30% 30%, ${peachAccent}, ${goldColor})`,
+                    background: `radial-gradient(circle at 30% 30%, #e8b886, ${goldColor})`,
                     flexShrink: 0,
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.45)',
                   }} />
                   <span style={{
                     fontSize: subSz, color: bodyColor, lineHeight: 1.4,
                     fontFamily: pack.bodyFont,
-                    textShadow: hasPhoto ? '0 1px 6px rgba(0,0,0,0.4)' : undefined,
+                    textShadow: hasPhoto ? '0 1px 6px rgba(0,0,0,0.5)' : undefined,
                   }}>{item}</span>
                 </div>
               ))}
@@ -639,9 +658,17 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
               fontSize: subSz, color: bodyColor, lineHeight: 1.75,
               margin: 0, fontFamily: pack.bodyFont,
               whiteSpace: 'pre-line',
-              textShadow: hasPhoto ? '0 1px 8px rgba(0,0,0,0.5)' : undefined,
+              textShadow: hasPhoto ? '0 1px 10px rgba(0,0,0,0.6)' : undefined,
             }}>
-              {slide.subtitle}
+              {bodyMain}
+              {bodyHighlight && (
+                <>
+                  {bodyMain.endsWith('\n') ? '' : '\n'}
+                  <span style={{ color: orangeWarm, fontWeight: 600 }}>
+                    {bodyHighlight}
+                  </span>
+                </>
+              )}
             </p>
           ) : null}
 

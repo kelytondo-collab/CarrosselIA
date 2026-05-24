@@ -249,8 +249,8 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
 
     const slideBg = hasPhoto
       ? `${textOnLeft
-          ? 'linear-gradient(to right, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 38%, rgba(20,12,8,0.15) 62%, rgba(20,12,8,0) 78%)'
-          : 'linear-gradient(to left, rgba(20,12,8,0.78) 0%, rgba(20,12,8,0.55) 38%, rgba(20,12,8,0.15) 62%, rgba(20,12,8,0) 78%)'
+          ? 'linear-gradient(to right, rgba(20,12,8,0.55) 0%, rgba(20,12,8,0.30) 32%, rgba(20,12,8,0.08) 55%, rgba(20,12,8,0) 70%)'
+          : 'linear-gradient(to left, rgba(20,12,8,0.55) 0%, rgba(20,12,8,0.30) 32%, rgba(20,12,8,0.08) 55%, rgba(20,12,8,0) 70%)'
         }, url(${photo}) center/cover no-repeat`
       : `radial-gradient(ellipse at ${textOnLeft ? 'left' : 'right'} center, #2b1810 0%, #1a0e08 75%, #0a0503 100%)`
 
@@ -259,8 +259,17 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
     const titleSz = 18 * fontScale
     const subSz = 10.5 * fontScale
     const goldColor = '#d4a574'
-    const vinhoColor = '#7b1d3a'
-    const peachAccent = '#e8b886'
+    const mauveAccent = '#9c5a6f'      // mauve/rosé pra highlight box
+    const peachAccent = '#e8b886'      // pêssego ainda usado em question/poll
+    const orangeWarm = '#d4a574'       // laranja warm pra última frase
+
+    // Split body — última frase pode virar destaque laranja warm
+    const body = slide.body || ''
+    const bodyParas = body.split(/\n\s*\n/)
+    const lastPara = bodyParas[bodyParas.length - 1] || ''
+    const lastSentenceMatch = lastPara.match(/^(.*?)([^.!?…]+[.!?…]?)\s*$/s)
+    const bodyMain = bodyParas.slice(0, -1).join('\n\n') + (bodyParas.length > 1 ? '\n\n' : '') + (lastSentenceMatch ? lastSentenceMatch[1].trim() : '')
+    const bodyHighlight = lastSentenceMatch && body.length > 60 ? lastSentenceMatch[2].trim() : ''
 
     return (
       <div
@@ -277,35 +286,42 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
         {/* Safe zone top */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: 'rgba(0,0,0,0.1)' }} />
 
-        {/* Container do texto */}
+        {/* Container do texto CENTRALIZADO */}
         <div style={{
           position: 'absolute',
           top: padY, bottom: padY,
           [textOnLeft ? 'left' : 'right']: padX,
           width: DISP_W * 0.55,
           display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', textAlign: 'left',
+          justifyContent: 'center', textAlign: 'center',
         }}>
+          {/* Heart ornament topo */}
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" style={{ display: 'block', margin: '0 auto 10px' }}>
+            <path d="M12 20.5 C 6 16, 3 13, 3 9 C 3 6, 5 4, 8 4 C 10 4, 11.5 5.5, 12 7 C 12.5 5.5, 14 4, 16 4 C 19 4, 21 6, 21 9 C 21 13, 18 16, 12 20.5 Z"
+              stroke={goldColor} strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter: hasPhoto ? 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' : undefined }} />
+          </svg>
+
           <h2 style={{
             fontSize: titleSz, fontWeight: 400, color: '#fdf4e8',
             lineHeight: 1.18, margin: 0,
             fontFamily: '"Playfair Display", serif',
-            textShadow: hasPhoto ? '0 2px 10px rgba(0,0,0,0.5)' : undefined,
+            textShadow: hasPhoto ? '0 2px 10px rgba(0,0,0,0.6)' : undefined,
           }}>
             {headMain}
             {headHighlight && (
               <>
                 <br />
                 <span style={{
-                  background: peachAccent,
-                  color: vinhoColor,
-                  padding: '2px 8px',
+                  background: mauveAccent,
+                  color: '#ffffff',
+                  padding: '2px 10px',
                   display: 'inline-block',
                   marginTop: 5,
                   fontStyle: 'italic',
                   fontFamily: '"Playfair Display", serif',
                   fontWeight: 500,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                  boxShadow: '0 2px 7px rgba(0,0,0,0.4)',
                 }}>
                   {headHighlight}
                 </span>
@@ -313,18 +329,30 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
             )}
           </h2>
 
-          {/* Linha gold curta */}
-          <div style={{ width: 40, height: 1.5, background: goldColor, marginTop: 10, marginBottom: 10 }} />
+          {/* Linha gold curta tapered */}
+          <div style={{
+            width: 50, height: 1.5,
+            background: `linear-gradient(to right, transparent, ${goldColor} 30%, ${goldColor} 70%, transparent)`,
+            marginTop: 10, marginBottom: 10, alignSelf: 'center',
+          }} />
 
-          {/* Body */}
+          {/* Body com destaque na última frase */}
           {slide.body && (
             <p style={{
               fontSize: subSz, color: '#fdf4e8', lineHeight: 1.7,
               margin: 0, fontFamily: '"Lora", serif',
               whiteSpace: 'pre-line',
-              textShadow: hasPhoto ? '0 1px 6px rgba(0,0,0,0.5)' : undefined,
+              textShadow: hasPhoto ? '0 1px 8px rgba(0,0,0,0.6)' : undefined,
             }}>
-              {slide.body}
+              {bodyMain}
+              {bodyHighlight && (
+                <>
+                  {bodyMain.endsWith('\n') ? '' : '\n'}
+                  <span style={{ color: orangeWarm, fontWeight: 600 }}>
+                    {bodyHighlight}
+                  </span>
+                </>
+              )}
             </p>
           )}
 
@@ -334,17 +362,18 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
               marginTop: 12, padding: '10px 12px',
               background: peachAccent, borderRadius: 4,
               boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+              textAlign: 'left',
             }}>
-              <p style={{ fontSize: 8, color: `${vinhoColor}aa`, margin: '0 0 4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: '"Playfair Display", serif' }}>
+              <p style={{ fontSize: 8, color: `${'#7b1d3a'}aa`, margin: '0 0 4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: '"Playfair Display", serif' }}>
                 Sua pergunta
               </p>
-              <p style={{ fontSize: 11, color: vinhoColor, margin: 0, fontWeight: 600, fontStyle: 'italic', fontFamily: '"Playfair Display", serif' }}>
+              <p style={{ fontSize: 11, color: '#7b1d3a', margin: 0, fontWeight: 600, fontStyle: 'italic', fontFamily: '"Playfair Display", serif' }}>
                 {slide.questionText}
               </p>
             </div>
           )}
 
-          {/* Poll (mesma vibe) */}
+          {/* Poll */}
           {slide.type === 'poll' && slide.pollOptions && (
             <div style={{ marginTop: 12 }}>
               <p style={{ fontSize: 10, color: '#fdf4e8', margin: '0 0 6px', fontWeight: 500, fontStyle: 'italic', fontFamily: '"Playfair Display", serif' }}>
@@ -355,7 +384,7 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
                   marginBottom: 4, padding: '6px 10px',
                   background: peachAccent, borderRadius: 3,
                 }}>
-                  <span style={{ fontSize: 10, color: vinhoColor, fontWeight: 500, fontFamily: '"Lora", serif' }}>{opt}</span>
+                  <span style={{ fontSize: 10, color: '#7b1d3a', fontWeight: 500, fontFamily: '"Lora", serif' }}>{opt}</span>
                 </div>
               ))}
             </div>
