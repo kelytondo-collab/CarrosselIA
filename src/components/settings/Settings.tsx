@@ -1,14 +1,13 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Save, ExternalLink, Key, Instagram, LogOut, Unlink, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Save, ExternalLink, Key, LogOut } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
-import { clearAuth, getInstagramAuthUrl, disconnectInstagram, getStoredUser } from '../../services/apiService'
+import { clearAuth, getStoredUser } from '../../services/apiService'
 import toast from 'react-hot-toast'
 
 export default function Settings() {
-  const { apiKey, setApiKey, isDark, toggleDark, instagram, setInstagram } = useApp()
+  const { apiKey, setApiKey, isDark, toggleDark } = useApp()
   const [key, setKey] = useState(apiKey)
   const [show, setShow] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
 
   const user = getStoredUser()
 
@@ -22,28 +21,11 @@ export default function Settings() {
     window.location.reload()
   }
 
-  const handleConnectInstagram = () => {
-    window.location.href = getInstagramAuthUrl()
-  }
-
-  const handleDisconnectInstagram = async () => {
-    setDisconnecting(true)
-    try {
-      await disconnectInstagram()
-      setInstagram(null)
-      toast.success('Instagram desconectado')
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao desconectar')
-    } finally {
-      setDisconnecting(false)
-    }
-  }
-
   return (
     <div className="max-w-xl mx-auto px-6 py-8 overflow-y-auto h-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Configuracoes</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie sua conta, API e Instagram</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Gerencie sua conta e API</p>
       </div>
 
       <div className="space-y-5">
@@ -66,47 +48,6 @@ export default function Settings() {
             </div>
           </div>
         )}
-
-        {/* Instagram */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Instagram size={16} className="text-pink-500" />
-            <h2 className="font-bold text-gray-800 dark:text-white text-sm">Instagram</h2>
-          </div>
-
-          {instagram ? (
-            <div>
-              <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 mb-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                Conectado como <span className="font-semibold">@{instagram.username}</span>
-              </div>
-              <p className="text-[10px] text-gray-400 mb-3">
-                Token expira em {new Date(instagram.expiresAt).toLocaleDateString('pt-BR')}
-              </p>
-              <button
-                onClick={handleDisconnectInstagram}
-                disabled={disconnecting}
-                className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-all disabled:opacity-50"
-              >
-                {disconnecting ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />}
-                Desconectar
-              </button>
-            </div>
-          ) : (
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Conecte sua conta Instagram Business/Creator para publicar direto do app.
-              </p>
-              <button
-                onClick={handleConnectInstagram}
-                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all"
-              >
-                <Instagram size={14} />
-                Conectar Instagram
-              </button>
-            </div>
-          )}
-        </div>
 
         {/* API Key */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">

@@ -1,13 +1,12 @@
 import { useState, useRef } from 'react'
 import type { ChangeEvent } from 'react'
-import { ArrowLeft, Download, FileArchive, Wand2, Palette, Type, Image, Pencil, Instagram } from 'lucide-react'
+import { ArrowLeft, Download, FileArchive, Wand2, Palette, Type, Image, Pencil } from 'lucide-react'
 import { useApp } from '../../contexts/AppContext'
 import type { View } from '../../contexts/AppContext'
 import type { ColorPalette, StorySlide, Caption } from '../../types'
 import { exportSlideAsImage, exportAllSlidesAsZip } from '../../services/exportService'
 import { generateSlideImage } from '../../services/geminiService'
 import { getDefaultProfile, updateProjectStories } from '../../services/storageService'
-import { uploadImages, publishStories } from '../../services/apiService'
 import CaptionEditor from '../caption/CaptionEditor'
 import { cn } from '../../utils/cn'
 import toast from 'react-hot-toast'
@@ -73,7 +72,7 @@ const DISP_W = 216
 const DISP_H = 384
 
 export default function StoriesPreview() {
-  const { currentProject, setView, apiKey, expertPhotoBase64, refreshProjects, instagram } = useApp()
+  const { currentProject, setView, apiKey, expertPhotoBase64, refreshProjects } = useApp()
   const storiesData = currentProject?.current_stories_data
   const profile = getDefaultProfile()
   const logo = profile?.brandKit?.logo
@@ -89,8 +88,6 @@ export default function StoriesPreview() {
   const [dlAllLoading, setDlAllLoading] = useState(false)
   const [fontScale, setFontScale] = useState(1.0)
   const [editingSlide, setEditingSlide] = useState<number | null>(null)
-  const [publishingStories, setPublishingStories] = useState(false)
-  const [publishProgress, setPublishProgress] = useState('')
   const [template, setTemplate] = useState<'padrao' | 'elegante'>('padrao')
 
   const slideRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -189,47 +186,6 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Erro', { id: toastId })
     } finally { setDlAllLoading(false) }
-  }
-
-  const handlePublishStories = async () => {
-    if (!instagram) {
-      toast.error('Conecte seu Instagram em Configuracoes primeiro')
-      return
-    }
-    const els = slideRefs.current.filter(Boolean) as HTMLElement[]
-    if (!els.length) return
-
-    setPublishingStories(true)
-    const toastId = toast.loading('Publicando stories...')
-    try {
-      // 1. Capture all slides
-      const html2canvas = (await import('html2canvas')).default
-      const blobs: Blob[] = []
-      for (let i = 0; i < els.length; i++) {
-        setPublishProgress(`Capturando story ${i + 1}/${els.length}...`)
-        const canvas = await html2canvas(els[i], { scale: 5, useCORS: true, backgroundColor: null })
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('Erro canvas')), 'image/png')
-        })
-        blobs.push(blob)
-      }
-
-      // 2. Upload all
-      setPublishProgress('Enviando imagens...')
-      const files = blobs.map((b, i) => new File([b], `story-${i + 1}.png`, { type: 'image/png' }))
-      const { urls } = await uploadImages(files)
-
-      // 3. Publish as stories
-      setPublishProgress('Publicando no Instagram...')
-      const result = await publishStories(urls)
-
-      toast.success(`${result.published} stories publicados!`, { id: toastId })
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao publicar stories', { id: toastId })
-    } finally {
-      setPublishingStories(false)
-      setPublishProgress('')
-    }
   }
 
   const bgColor = palette.p.background || palette.p.secondary
@@ -426,12 +382,6 @@ ${aiHint ? `Sugestão visual do criador:\n${aiHint}\n\n` : ''}REGRAS:
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {publishingStories && (
-            <span className="text-[10px] text-gray-400 mr-1">{publishProgress}</span>
-          )}
-          <button onClick={handlePublishStories} disabled={publishingStories || !instagram} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 transition-all" title={!instagram ? 'Conecte seu Instagram em Configuracoes' : 'Publicar stories no Instagram'}>
-            <Instagram size={15} /> {publishingStories ? 'Publicando...' : 'Publicar Stories'}
-          </button>
           <button onClick={handleDlAll} disabled={dlAllLoading} className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
             <FileArchive size={15} /> Download ZIP
           </button>
