@@ -16,7 +16,50 @@ function tryParseJSON(text: string): LuminaeImportData | null {
 
     const data = JSON.parse(cleaned)
 
-    // Luminae JSON format: { slides: [...], caption: {...} }
+    // === ExportPayload v2 (novo contrato Luminae → Carrossel) ===
+    if (data.version === 'v2' && Array.isArray(data.slides)) {
+      const slides: LuminaeSlide[] = data.slides.map((s: any, i: number) => ({
+        headline: s.title || s.headline || `Slide ${i + 1}`,
+        subtitle: s.text || s.subtitle || s.body || '',
+        emotion: s.emotion || '',
+        visualPrompt: s.visualPrompt || '',
+      }))
+      const rawCaption = data.caption || {}
+      const hashtagsArr = Array.isArray(rawCaption.hashtags)
+        ? rawCaption.hashtags
+        : []
+      const caption: LuminaeCaption = {
+        hook: rawCaption.hook || '',
+        body: rawCaption.body || '',
+        cta: rawCaption.cta || '',
+        hashtags: hashtagsArr.join(' '),
+      }
+      const s = data.strategy || {}
+      return {
+        slides,
+        caption,
+        strategy: {
+          painPoint: s.painPoint ?? undefined,
+          desire: s.desiredOutcome ?? undefined,
+          hook: rawCaption.hook ?? undefined,
+          territorio: s.territorio ?? undefined,
+          mechanism: s.mechanism ?? undefined,
+          distributionGoal: s.distributionGoal ?? undefined,
+          awarenessLevel: s.awarenessLevel ?? undefined,
+        },
+        tipo: data.formato || 'carrossel',
+        format: 'json',
+        version: 'v2',
+        contentHistoryId: data.contentHistoryId,
+        antirepScore: data.antirepScore,
+        antirepDecision: data.antirepDecision,
+        seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
+        classification: data.classification ?? undefined,
+        skipRegeneration: true,
+      }
+    }
+
+    // Luminae JSON format legado: { slides: [...], caption: {...} }
     if (data.slides && Array.isArray(data.slides)) {
       const slides: LuminaeSlide[] = data.slides.map((s: any, i: number) => ({
         headline: s.headline || s.titulo || s.title || `Slide ${i + 1}`,

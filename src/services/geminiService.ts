@@ -691,20 +691,52 @@ export const generateSlideImage = async (
         parts: [
           { inlineData: { mimeType, data: base64 } },
           {
-            text: `Esta é uma foto de referência do expert.
-MANTENHA EXATAMENTE: rosto, traços, pele, cabelo, aparência física da pessoa.
-MUDE COMPLETAMENTE: cenário, fundo, iluminação, ambiente, roupas se necessário.
+            text: `Reference photo of the subject — preserve her/his identity exactly.
 
-Gere uma nova fotografia profissional e cinematográfica onde esta pessoa aparece em:
+MUST PRESERVE (identical to reference):
+- Facial structure, features, skin tone, complexion
+- Hair (color, texture, length, style exactly as in reference)
+- Eye color and shape, brow shape, lip shape
+- Any glasses, distinctive jewelry, tattoos or accessories visible in the reference
+- Natural body proportions and build
+
+CREATE a candid editorial photograph of this person in this scene:
 ${visualPrompt}
 
-Requisitos técnicos:
-- Fotografia realista, alta qualidade, editorial
-- Iluminação dramática e emocional
-- Formato: ${formatDesc}
-- O rosto da pessoa deve ser claramente reconhecível e idêntico à foto original
+CAMERA & LENS:
+- Shot on Sony A7 IV, 85mm f/1.4 prime lens, aperture wide open
+- ISO 400, natural light only, no flash
+- Shallow depth of field with soft creamy bokeh, subject in sharp focus
+- Subtle film grain — Kodak Portra 400 emulation
 
-REGRA ABSOLUTA: A imagem NÃO PODE conter NENHUMA letra, palavra, frase, número ou texto de qualquer tipo. ZERO texto. ZERO letras. Nem desfocadas. Apenas fotografia pura.`
+LIGHTING:
+- Natural light matched to the scene (window light, golden hour, overcast diffused, indoor lamp — pick what fits)
+- Soft directional key light with gentle fill from ambient bounce
+- Real light behavior: catchlight in eyes, soft falloff on cheekbone, natural shadow density
+
+SKIN & REALISM (critical — this is what stops "AI look"):
+- Visible natural skin texture with pores, fine lines, subtle asymmetry
+- Realistic hair strands, some flyaways, no perfect symmetry
+- Hands must be anatomically correct — 5 fingers, natural knuckles, no glossy plastic look
+- Real fabric texture on clothes — visible weave, natural wrinkles and drape
+- Matte skin finish, not over-smoothed, no HDR glow, no beauty-filter softening
+
+COMPOSITION & MOOD:
+- Candid moment — subject engaged with the scene, not posing for camera unless the prompt says so
+- Rule of thirds, subject slightly off-center
+- Editorial style reminiscent of Peter Lindbergh + Kinfolk magazine aesthetic
+- Emotionally coherent with the scene (intimate, contemplative, joyful, focused — match the prompt)
+
+STRICTLY AVOID (this is what ruins realism):
+- Plastic-smooth skin, doll-like eyes, glossy over-processed look
+- Perfectly symmetrical face, symmetrical hair, symmetrical eyes
+- Impossible hands, extra fingers, warped jewelry, floating accessories
+- Uncanny valley — anything that reads as "AI-generated" at first glance
+- Vibrant unrealistic colors, HDR halo, oversharpened edges
+
+Format: ${formatDesc}, print-quality resolution.
+
+ABSOLUTE RULE — NO TEXT: The image MUST NOT contain any letters, words, numbers, typography or writing of any kind. Zero text. Zero letters. Not even blurred or partial. Pure photograph only.`
           }
         ]
       }],
@@ -719,19 +751,38 @@ REGRA ABSOLUTA: A imagem NÃO PODE conter NENHUMA letra, palavra, frase, número
       contents: [{
         role: 'user',
         parts: [{
-          text: `Gere uma imagem baseada nesta descrição visual:
+          text: `Create a candid editorial photograph of this scene:
 ${visualPrompt}
 
-Estilo: Fotografia cinematográfica profissional, emocional, alta qualidade.
-Formato: ${formatDesc}.
+CAMERA & LENS:
+- Shot on Sony A7 IV, 85mm f/1.4 (or 35mm f/1.4 for wider scenes), aperture wide open
+- ISO 400, natural light only, no flash
+- Shallow depth of field with soft creamy bokeh
+- Subtle film grain — Kodak Portra 400 emulation
 
-REGRA ABSOLUTA — PROIBIDO TEXTO NA IMAGEM:
-- A imagem NÃO PODE conter NENHUMA letra, palavra, frase, número, símbolo tipográfico ou caractere escrito.
-- ZERO texto. ZERO letras. ZERO palavras. Nem mesmo parcialmente visíveis ou desfocadas.
-- Se a descrição mencionar frases ou conteúdo textual, IGNORE o texto e gere APENAS o visual/cenário/atmosfera.
-- NÃO gere marcas d'água, logos, títulos, legendas ou qualquer forma de escrita.
+LIGHTING:
+- Natural light matched to the scene (window light, golden hour, overcast diffused, indoor lamp — pick what fits)
+- Soft directional key light with gentle fill from ambient bounce
+- Real light behavior: soft falloff, natural shadow density, no HDR glow
 
-A imagem será usada como FUNDO para texto sobreposto depois — por isso precisa ser LIMPA, sem nenhum texto.`
+REALISM (critical — this is what stops "AI look"):
+- If people appear: visible natural skin texture with pores, fine lines, subtle asymmetry, realistic hair with flyaways, anatomically correct hands (5 fingers), matte skin finish
+- Real fabric texture on clothes — visible weave, natural wrinkles
+- Real material textures on objects — no glossy plastic look
+- Editorial style reminiscent of Peter Lindbergh + Kinfolk magazine aesthetic
+
+STRICTLY AVOID:
+- Plastic-smooth skin, doll-like eyes, glossy over-processed look
+- Perfectly symmetrical faces, symmetrical hair, symmetrical objects
+- Impossible hands, extra fingers, warped jewelry, floating accessories
+- Vibrant unrealistic colors, HDR halo, oversharpened edges
+- Anything that reads as "AI-generated" at first glance
+
+Format: ${formatDesc}, print-quality resolution.
+
+ABSOLUTE RULE — NO TEXT: The image MUST NOT contain any letters, words, numbers, typography or writing of any kind. Zero text. Not even blurred or partial. If the visual description mentions any phrase or text content, IGNORE that text and generate only the scene/atmosphere. No watermarks, no logos, no titles, no captions.
+
+This image will be used as a BACKGROUND for text overlay later — it must be CLEAN, with no embedded text.`
         }]
       }],
       generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } as any,

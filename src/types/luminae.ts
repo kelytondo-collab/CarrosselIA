@@ -26,11 +26,22 @@ export interface LuminaeImportData {
     consciousnessLevel?: string
     niche?: string
     hook?: string
+    territorio?: string
+    mechanism?: string
+    distributionGoal?: string
+    awarenessLevel?: number | null
   }
   gatilho?: string
   nivelConsciencia?: string
   tipo?: string // carrossel, post, stories
   format?: 'json' | 'marcadores' | 'texto-livre'
+  version?: 'v1' | 'v2'
+  contentHistoryId?: string
+  antirepScore?: number
+  antirepDecision?: string
+  seoKeywords?: string[]
+  classification?: Record<string, unknown>
+  skipRegeneration?: boolean // true when v2 — Carrossel vira consumidor puro
 }
 
 export type InputMode = 'luminae' | 'colar' | 'criar'
