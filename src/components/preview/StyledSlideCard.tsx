@@ -154,20 +154,6 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
             </p>
           )}
 
-          {isCta && (
-            <div style={{
-              marginTop: 20, padding: '11px 26px',
-              background: pal.accent, borderRadius: 8,
-              textAlign: 'center', alignSelf: 'flex-start',
-            }}>
-              <span style={{
-                color: pal.dark, fontSize: sz(12), fontWeight: 700,
-                fontFamily: pack.bodyFont, letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>
-                {slide.ctaType || 'QUERO COMEÇAR'}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Bottom bar */}
@@ -375,7 +361,6 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
   // ══════════════════════════════════════════
   if (variant.startsWith('edit-')) {
     const isCover = variant === 'edit-cover'
-    const isCta = variant === 'edit-cta'
     const isPhoto = variant === 'edit-photo'
     const isAccent = variant === 'edit-accent'
     const isWhite = variant === 'edit-white'
@@ -476,19 +461,6 @@ const StyledSlideCard = forwardRef<HTMLDivElement, Props>(function StyledSlideCa
             </>
           )}
 
-          {isCta && (
-            <div style={{
-              marginTop: 22, padding: '13px 30px',
-              background: pal.accent, textAlign: 'center', alignSelf: 'flex-start',
-            }}>
-              <span style={{
-                color: pal.textLight, fontSize: sz(13), fontWeight: 400,
-                fontFamily: pack.titleFont, letterSpacing: '0.12em', textTransform: 'uppercase',
-              }}>
-                {slide.ctaType || 'COMECE AGORA'}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Bottom */}
