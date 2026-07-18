@@ -118,6 +118,20 @@ O slide 1 deve ser a CAPA com gancho poderoso.
 O slide ${inputs.slideCount} deve ser o FECHAMENTO com CTA emocional.
 Os slides intermediários = uma ideia completa cada.
 
+REGRA DO visualPrompt — CRÍTICA (evita "cara de IA"):
+Descreva SEMPRE uma única cena fotográfica real e coerente — como se um fotógrafo tivesse capturado ali, sem edição.
+PROIBIDO na descrição do visualPrompt:
+- Retratos/rostos flutuando, halos luminosos, auras, glow espiritual em volta de pessoas ou objetos
+- Círculos, molduras redondas ou frames "místicos" pairando no ar
+- Cenas de altar, velas + fotos emolduradas em arranjo espiritual, santinhos, "memorial"
+- Composição em collage, dupla exposição, sobreposição translúcida, "sonho"/"lembrança" com pessoa transparente
+- Objetos/pessoas fantasmagóricos, translúcidos ou "aparecendo" no fundo
+- Qualquer efeito que grite "montagem" ou "photoshop"
+OBRIGATÓRIO se o slide falar de mãe/pai/família/passado/ancestralidade:
+- Use elementos físicos REAIS na cena: porta-retrato de madeira/prata sobre uma mesa ou parede, álbum de fotos aberto na mão, carta antiga, joia herdada, xícara de café herdada, poltrona da avó
+- SEM glow, SEM halo, SEM levitação — objeto está apoiado numa superfície ou segurado por uma mão
+Estética alvo: editorial Kinfolk / Peter Lindbergh / Cereal Magazine — luz natural, um momento real, sem drama místico.
+
 REGRA DA LEGENDA — CRÍTICA:
 A legenda É UMA CAMADA NOVA, NÃO um resumo. Os slides ENTREGAM o conteúdo; a legenda DESACOMODA o leitor.
 PROIBIDO: copiar headlines, copiar subtitles, repetir frases dos slides, parafrasear o que está nos cards.
@@ -734,6 +748,15 @@ STRICTLY AVOID (this is what ruins realism):
 - Uncanny valley — anything that reads as "AI-generated" at first glance
 - Vibrant unrealistic colors, HDR halo, oversharpened edges
 
+STRICTLY AVOID — COMPOSITE / SPIRITUAL LOOK (this is what ruins editorial credibility):
+- Floating portraits, floating faces, circular photo frames hovering in the air
+- Glowing halos, luminous rings, auras, ethereal glow around any person or object
+- Altar aesthetic: candles + framed photos arranged as memorial/shrine
+- Double exposure, translucent overlays, ghost-like figures, dream-memory collage
+- Anyone appearing "in the mind" of the subject as a floating apparition
+- Any photoshop-composite look — the image must be ONE single real captured moment
+If a family member or ancestor is referenced: use a REAL physical framed photo on a table, shelf, or wall — held or resting on a surface, no glow, no levitation.
+
 Format: ${formatDesc}, print-quality resolution.
 
 ABSOLUTE RULE — NO TEXT: The image MUST NOT contain any letters, words, numbers, typography or writing of any kind. Zero text. Zero letters. Not even blurred or partial. Pure photograph only.`
@@ -777,6 +800,15 @@ STRICTLY AVOID:
 - Impossible hands, extra fingers, warped jewelry, floating accessories
 - Vibrant unrealistic colors, HDR halo, oversharpened edges
 - Anything that reads as "AI-generated" at first glance
+
+STRICTLY AVOID — COMPOSITE / SPIRITUAL LOOK:
+- Floating portraits, floating faces, circular photo frames hovering in the air
+- Glowing halos, luminous rings, auras, ethereal glow around any person or object
+- Altar aesthetic: candles + framed photos arranged as memorial/shrine
+- Double exposure, translucent overlays, ghost-like figures, dream-memory collage
+- Anyone appearing "in the mind" of the subject as a floating apparition
+- Any photoshop-composite look — the image must be ONE single real captured moment
+If a family member or ancestor is referenced: use a REAL physical framed photo on a table, shelf, or wall — held or resting on a surface, no glow, no levitation.
 
 Format: ${formatDesc}, print-quality resolution.
 
